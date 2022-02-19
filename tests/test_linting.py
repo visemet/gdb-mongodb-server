@@ -8,4 +8,5 @@ import pytest
 def test_linting():
     """Check code and tests for Python linting errors."""
     runner = pylint.lint.Run(["../gdbmongo/", "../tests/"], exit=False)
-    assert runner.linter.msg_status == 0, "Changes are needed to address linting issues"
+    lint_ok = runner.linter.msg_status == 0
+    assert lint_ok, "Changes are needed to address linting issues"
