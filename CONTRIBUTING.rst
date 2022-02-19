@@ -9,3 +9,10 @@ Running tests locally
 
     $ python -m pip install --upgrade tox
     $ tox
+
+Fixing formatting errors
+------------------------
+
+.. code-block:: console
+
+    $ tox -e format
