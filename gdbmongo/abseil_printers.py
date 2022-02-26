@@ -20,7 +20,7 @@ import typing
 from gdbmongo import stdlib_printers
 
 
-# pylint: disable=invalid-name
+# pylint: disable-next=invalid-name
 def AbslHashContainerIterator(container):
     """Return a generator of every node in the given absl::container_internal::raw_hash_set or
     derived class.
@@ -38,8 +38,8 @@ def AbslHashContainerIterator(container):
             yield slots[i]
 
 
-# pylint: disable=missing-function-docstring
 class AbslHashSetPrinterBase:
+    # pylint: disable=missing-function-docstring
     """Pretty-printer base class for absl::node_hash_set<T> and absl::flat_hash_set<T>."""
 
     template_name: str
@@ -93,8 +93,8 @@ class AbslFlatHashSetPrinter(AbslHashSetPrinterBase):
         return elem_val
 
 
-# pylint: disable=missing-function-docstring
 class AbslHashMapPrinterBase:
+    # pylint: disable=missing-function-docstring
     """Pretty-printer base class for absl::node_hash_map<K, V> and absl::flat_hash_map<K, V>."""
 
     template_name: str

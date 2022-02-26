@@ -42,7 +42,7 @@ def run_yapf(yapf, fix: bool) -> bool:
 def test_formatting():
     """Check code and tests for Python formatting errors."""
     # We import the module here to suppress the PendingDeprecationWarning.
-    # pylint: disable=import-outside-toplevel
+    # pylint: disable-next=import-outside-toplevel
     import yapf
 
     should_fix = distutils.util.strtobool(os.environ.get("TOX_YAPF_FIX", "0"))

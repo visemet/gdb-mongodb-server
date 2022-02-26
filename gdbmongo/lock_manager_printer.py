@@ -26,7 +26,6 @@ core file can be displayed with the following commands:
 
 import typing
 
-# pylint: disable=import-error
 import gdb
 
 from gdbmongo import stdlib_printers
@@ -39,7 +38,7 @@ def gdb_lookup_value(symbol_name: str) -> gdb.Value:
     return gdb.lookup_symbol(symbol_name)[0].value()
 
 
-# pylint: disable=too-few-public-methods
+# pylint: disable-next=too-few-public-methods
 class ServiceContextDecorationMixin:
     """Class to add support for constructing from the global ServiceContext if the subclass already
     supports constructing from a ServiceContext explicitly."""
@@ -102,8 +101,8 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
         return cls(catalog)
 
 
-# pylint: disable=missing-function-docstring
 class LockManagerPrinter(ServiceContextDecorationMixin):
+    # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::LockManager."""
 
     def __init__(self, val):
@@ -156,8 +155,8 @@ class LockManagerPrinter(ServiceContextDecorationMixin):
         return cls(lock_manager)
 
 
-# pylint: disable=missing-function-docstring
 class LockRequestListPrinter:
+    # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::LockRequestList (doubly-linked list)."""
 
     def __init__(self, val):
@@ -181,8 +180,9 @@ class LockRequestListPrinter:
         return self.val["_front"] != 0
 
 
-# pylint: disable=too-few-public-methods
+# pylint: disable-next=too-few-public-methods
 class ResourceIdPrinter:
+    # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::ResourceId."""
 
     def __init__(self, val):
@@ -218,8 +218,9 @@ class ResourceIdPrinter:
         return ret
 
 
-# pylint: disable=missing-function-docstring,too-few-public-methods
+# pylint: disable-next=too-few-public-methods
 class ResourceTypePrinter:
+    # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::ResourceType"""
 
     # We duplicate the contents of mongo::ResourceTypeNames[] here for a couple reasons:

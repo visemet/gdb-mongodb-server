@@ -31,7 +31,7 @@ from gdbmongo.detect_toolchain import ToolchainInfo, ToolchainVersionDetector
     (
         pytest.param(b"\x00GCC: (GNU) 8.5.0\x00", "GCC: (GNU) 8.5.0", id="gcc-simple"),
         pytest.param(
-            # pylint: disable=line-too-long
+            # pylint: disable-next=line-too-long
             b"\x00GCC: (GNU) 8.5.0\x00MongoDB clang version 7.0.1 (tags/RELEASE_701/final) (based on LLVM 7.0.1)\x00",
             "GCC: (GNU) 8.5.0",
             id="gcc-with-clang"),
@@ -48,14 +48,15 @@ def test_parse_gcc_version(raw_elf_section: bytes, expected: str):
     (
         pytest.param(b"\x00GCC: (GNU) 8.5.0\x00", None, id="clang-missing"),
         pytest.param(
-            # pylint: disable=line-too-long
+            # pylint: disable-next=line-too-long
             b"\x00MongoDB clang version 7.0.1 (tags/RELEASE_701/final) (based on LLVM 7.0.1)\x00",
             "MongoDB clang version 7.0.1",
             id="clang-simple"),
-        # pylint: disable=line-too-long
         pytest.param(
+            # pylint: disable-next=line-too-long
             b"\x00GCC: (GNU) 8.2.1 20180905 (Red Hat 8.2.1-3)\x00GCC: (GNU) 11.2.0\x00MongoDB clang version 12.0.1 (git@github.com:10gen/toolchain-builder.git c6da1cf7f0b4b60d53566305e59857d3d540dcf7)\x00",
-            "MongoDB clang version 12.0.1", id="clang-with-multiple-gcc"),
+            "MongoDB clang version 12.0.1",
+            id="clang-with-multiple-gcc"),
     ))
 def test_parse_clang_version(raw_elf_section: bytes, expected: str):
     """Check the extracted clang compiler version from a sample ELF .comment section."""
@@ -71,25 +72,25 @@ def test_parse_clang_version(raw_elf_section: bytes, expected: str):
     ("url", "expected"),
     (
         pytest.param(
-            # pylint: disable=line-too-long
+            # pylint: disable-next=line-too-long
             "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/ubuntu1804-debug-suggested/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_ubuntu1804_debug_suggested_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
             ToolchainInfo("GCC: (GNU) 8.5.0",
                           pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")),
             id="v3-gcc"),
         pytest.param(
-            # pylint: disable=line-too-long
+            # pylint: disable-next=line-too-long
             "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/ubuntu1804-debug-aubsan-lite-required/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_ubuntu1804_debug_aubsan_lite_required_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
             ToolchainInfo("MongoDB clang version 7.0.1",
                           pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")),
             id="v3-clang"),
         pytest.param(
-            # pylint: disable=line-too-long
+            # pylint: disable-next=line-too-long
             "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel80-dynamic-v4gcc-debug-experimental/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_enterprise_rhel80_dynamic_v4gcc_debug_experimental_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
             ToolchainInfo("GCC: (GNU) 11.2.0",
                           pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")),
             id="v4-gcc"),
         pytest.param(
-            # pylint: disable=line-too-long
+            # pylint: disable-next=line-too-long
             "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel80-dynamic-v4clang-debug-experimental/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_enterprise_rhel80_dynamic_v4clang_debug_experimental_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
             ToolchainInfo("MongoDB clang version 12.0.1",
                           pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")),

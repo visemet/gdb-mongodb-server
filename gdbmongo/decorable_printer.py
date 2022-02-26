@@ -29,14 +29,13 @@ decorated values on the global ServiceContext can be displayed with the followin
 
 import re
 
-# pylint: disable=import-error
 import gdb
 
 from gdbmongo import stdlib_printers
 
 
-# pylint: disable=missing-function-docstring
 class DecorationContainerPrinter:
+    # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::DecorationContainer<DecoratedType>.
 
     This includes MongoDB types like ServiceContext, Client, and OperationContext."""
