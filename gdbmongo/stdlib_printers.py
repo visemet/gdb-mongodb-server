@@ -20,6 +20,8 @@ gdbmongo.stdlib_printers.XX types without caring around which version of the Mon
 libstdc++ GDB pretty printers were loaded from. The intended usage in GDB pretty printers resembles
 the following Python snippet:
 
+.. code-block:: python
+
     # The `from gdbmongo.stdlib_printers import ...` syntax cannot be used because it would attempt
     # to reference an attribute before the gdb.libstdcxx.v6 module has been registered in
     # sys.modules.
