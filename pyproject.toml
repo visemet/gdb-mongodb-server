@@ -7,6 +7,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.pylint]
 
+    [tool.pylint.similarities]
+    min-similarity-lines = 6
+
 [tool.yapf]
 based_on_style = "pep8"
 column_limit = 100
