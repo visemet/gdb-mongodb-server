@@ -18,6 +18,16 @@ Its primary target audience is MongoDB employees.
 """
 
 try:
+    import gdb
+except ImportError:
+    # There is no gdb module when we're running the Python unit tests. We skip doing the imports for
+    # the actual GDB pretty printers because they expect there to always be a gdb module defined.
+    pass
+else:
+    from gdbmongo.interaction import register_printers
+    from gdbmongo.lock_manager_printer import LockManagerPrinter
+
+try:
     from gdbmongo._version import version as __version__
 except ImportError:
     # The package is not installed so we don't bother giving it a version number.

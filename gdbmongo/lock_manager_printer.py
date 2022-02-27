@@ -18,10 +18,10 @@
 After the pretty printers have been registered in GDB, the LockManager locks in a mongod process or
 core file can be displayed with the following commands:
 
-.. code-block:: gdb
+.. code-block:: python
 
-    python lock_mgr = LockManagerPrinter.from_global_service_context()
-    python print(lock_mgr.val)
+    (gdb) python lock_mgr = gdbmongo.LockManagerPrinter.from_global_service_context()
+    (gdb) python print(lock_mgr.val)
 """
 
 import typing
