@@ -39,8 +39,8 @@ class ToolchainVersionDetector:
 
     objcopy = "/opt/mongodbtoolchain/v3/bin/objcopy"
 
-    gcc_version_regexp = re.compile(rb"\x00(GCC: \(GNU\) \d+\.\d+\.\d+)\x00")
-    clang_version_regexp = re.compile(rb"\x00(MongoDB clang version \d+\.\d+\.\d+)")
+    gcc_version_regexp = re.compile(rb"(?:^|\x00)(GCC: \(GNU\) \d+\.\d+\.\d+)(?:\x00|$)")
+    clang_version_regexp = re.compile(rb"(?:^|\x00)(MongoDB clang version \d+\.\d+\.\d+)")
 
     def __init__(self, executable: StrOrBytesPath):
         """Initialize the ToolchainVersionDetector with the pathname of an executable."""

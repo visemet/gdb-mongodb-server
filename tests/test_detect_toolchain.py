@@ -37,6 +37,11 @@ from gdbmongo.detect_toolchain import ToolchainInfo, ToolchainVersionDetector
             id="gcc-with-clang"),
         pytest.param(b"\x00GCC: (GNU) 8.2.1 20180905 (Red Hat 8.2.1-3)\x00GCC: (GNU) 11.2.0\x00",
                      "GCC: (GNU) 11.2.0", id="gcc-with-multiple-gcc"),
+        pytest.param(
+            # pylint: disable-next=line-too-long
+            b"GCC: (GNU) 8.5.0\x00Linker: LLD 7.0.1\x00MongoDB clang version 7.0.1 (tags/RELEASE_701/final) (based on LLVM 7.0.1)\x00\x00",
+            "GCC: (GNU) 8.5.0",
+            id="gcc-with-clang-and-lld"),
     ))
 def test_parse_gcc_version(raw_elf_section: bytes, expected: str):
     """Check the extracted GCC compiler version from a sample ELF .comment section."""
