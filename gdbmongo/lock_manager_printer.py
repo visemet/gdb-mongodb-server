@@ -33,9 +33,12 @@ from gdbmongo.abseil_printers import AbslNodeHashMapPrinter
 from gdbmongo.decorable_printer import DecorationContainerPrinter
 
 
-def gdb_lookup_value(symbol_name: str) -> gdb.Value:
+def gdb_lookup_value(symbol_name: str) -> typing.Optional[gdb.Value]:
     """Return the gdb.Value corresponding to the symbol name given."""
-    return gdb.lookup_symbol(symbol_name)[0].value()
+    if (symbol := gdb.lookup_symbol(symbol_name)[0]) is not None:
+        return symbol.value()
+
+    return None
 
 
 # pylint: disable-next=too-few-public-methods
@@ -83,20 +86,52 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
 
         return namespaces[0] if len(namespaces) == 1 else None
 
+    # pylint: disable-next=too-few-public-methods
+    class _LatestCollectionCatalogDecoration:
+
+        short_name = "LatestCollectionCatalog"
+
+        def __init__(self):
+            self.catalog_type = gdb.lookup_type(
+                "mongo::(anonymous namespace)::LatestCollectionCatalog")
+
+        def __call__(self, decoration: gdb.Value) -> gdb.Value:
+            return stdlib_printers.SharedPointerPrinter(
+                "std::shared_ptr", decoration["catalog"]).pointer.dereference()
+
+    # pylint: disable-next=too-few-public-methods
+    class _CollectionCatalogDecoration:
+
+        short_name = "CollectionCatalog"
+
+        def __init__(self):
+            self.catalog_type = gdb.lookup_type("mongo::CollectionCatalog")
+
+        def __call__(self, decoration: gdb.Value) -> gdb.Value:
+            return decoration
+
     @classmethod
     def from_service_context(cls, service_context):
         """Return a _CollectionCatalogPrinter from its decoration on ServiceContext."""
-        catalog_type = gdb.lookup_type("mongo::(anonymous namespace)::LatestCollectionCatalog")
+        try:
+            catalog_getter = cls._LatestCollectionCatalogDecoration()
+        except gdb.error as err:
+            if not err.args[0].startswith("No type named "):
+                raise
+
+            # The sole CollectionCatalog instance was previously a direct decoration on the global
+            # ServiceContext before becoming a versioned object in SERVER-52556.
+            # https://github.com/mongodb/mongo/blob/r4.4.13/src/mongo/db/catalog/collection_catalog.cpp#L47-L48
+            catalog_getter = cls._CollectionCatalogDecoration()
 
         iterator = DecorationContainerPrinter(service_context["_decorations"]).children()
         for (_, decoration) in iterator:
-            if decoration.type == catalog_type:
-                catalog = stdlib_printers.SharedPointerPrinter(
-                    "std::shared_ptr", decoration["catalog"]).pointer.dereference()
+            if decoration.type == catalog_getter.catalog_type:
+                catalog = catalog_getter(decoration)
                 break
         else:
             raise ValueError(
-                "Failed to locate LatestCollectionCatalog decoration in ServiceContext")
+                f"Failed to locate {catalog_getter.short_name} decoration in ServiceContext")
 
         return cls(catalog)
 
@@ -153,6 +188,18 @@ class LockManagerPrinter(ServiceContextDecorationMixin):
             raise ValueError("Failed to locate LockManager decoration in ServiceContext")
 
         return cls(lock_manager)
+
+    @classmethod
+    def from_global(cls):
+        """Return a LockManagerPrinter from the global LockManager."""
+        # The global LockManager was previously its own global before becoming a decoration on the
+        # global ServiceContext in SERVER-52516.
+        # https://github.com/mongodb/mongo/blob/r5.0.6/src/mongo/db/concurrency/lock_state.cpp#L122
+        if (lock_manager :=
+                gdb_lookup_value("mongo::(anonymous namespace)::globalLockManager")) is not None:
+            return cls(lock_manager)
+
+        return cls.from_global_service_context()
 
 
 class LockRequestListPrinter:

@@ -92,5 +92,5 @@ following commands:
 
 .. code-block:: python
 
-    (gdb) python lock_mgr = gdbmongo.LockManagerPrinter.from_global_service_context()
+    (gdb) python lock_mgr = gdbmongo.LockManagerPrinter.from_global()
     (gdb) python print(lock_mgr.val)

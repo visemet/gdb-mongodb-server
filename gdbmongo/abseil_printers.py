@@ -17,7 +17,24 @@
 
 import typing
 
+import gdb
+
 from gdbmongo import stdlib_printers
+
+
+def gdb_resolve_type(typ: gdb.Type) -> gdb.Type:
+    """Look up the name of a C++ type with any typedefs, pointers, and references stripped.
+
+    This function is useful in contexts where template arguments can be pointers because GDB may not
+    load the fields of the templated entity otherwise."""
+
+    typ = typ.strip_typedefs()
+
+    while typ.code in (gdb.TYPE_CODE_PTR, gdb.TYPE_CODE_REF):
+        typ = typ.target().strip_typedefs()
+
+    typename = typ.tag if typ.tag is not None else typ.name
+    return gdb.lookup_type(typename)
 
 
 # pylint: disable-next=invalid-name
@@ -25,6 +42,7 @@ def AbslHashContainerIterator(container):
     """Return a generator of every node in the given absl::container_internal::raw_hash_set or
     derived class.
     """
+
     capacity = int(container["capacity_"])
     ctrl = container["ctrl_"]
     slots = container["slots_"]
@@ -49,6 +67,8 @@ class AbslHashSetPrinterBase:
         self.element_type = val.type.template_argument(0)
         self.size = int(val["size_"])
         self.val = val
+
+        gdb_resolve_type(self.element_type)
 
     @staticmethod
     def display_hint():
@@ -105,6 +125,9 @@ class AbslHashMapPrinterBase:
         self.value_type = val.type.template_argument(1)
         self.size = int(val["size_"])
         self.val = val
+
+        gdb_resolve_type(self.key_type)
+        gdb_resolve_type(self.value_type)
 
     @staticmethod
     def display_hint():
