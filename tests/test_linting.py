@@ -15,9 +15,12 @@
 ###
 """Test file for checking Python linting."""
 
+import logging
 import sys
+import unittest.mock
 
 import mypy.api
+import pydocstyle.cli
 import pylint.lint
 import pytest
 
@@ -46,3 +49,20 @@ def test_typechecking() -> None:
 
     typecheck_ok = exit_status == 0
     assert typecheck_ok, "Changes are needed to address type annotation issues"
+
+
+def test_docstrings() -> None:
+    """Check docstrings for Python style errors."""
+    with unittest.mock.patch(
+            "sys.argv",
+        ["", "--config=../pyproject.toml", "../gdbmongo/", "../stubs/", "../tests/"]):
+        logger = logging.getLogger("pydocstyle.utils")
+        # pydocstyle automatically configures its logger to level DEBUG. This leads pytest to
+        # capture and display a large volume of log messages whenever there is a test assertion
+        # failure. We override logging.Logger.setLevel() on pydocstyle's logger to prevent this.
+        # Note that pytest automatically captures any messages at level WARNING and above.
+        with unittest.mock.patch.object(logger, "setLevel"):
+            exit_code = pydocstyle.cli.run_pydocstyle()
+
+    docstrings_ok = exit_code == 0
+    assert docstrings_ok, "Changes are needed to address docstring issues"

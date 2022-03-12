@@ -16,6 +16,22 @@ python_version = "3.9"
 strict = true
 warn_unreachable = true
 
+[tool.pydocstyle]
+match = ".*\\.pyi?"
+ignore = [
+    "D101",
+    "D102",
+    "D103",
+    "D105",
+    "D106",
+    "D107",
+    "D203",
+    "D205",
+    "D213",
+    "D400",
+    "D415"
+]
+
 [tool.pylint]
 
     [tool.pylint.basic]
