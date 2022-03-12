@@ -16,9 +16,21 @@
 """Test file for checking Python formatting."""
 
 import distutils.util
+import itertools
 import os
+import pathlib
+import typing
 
 import pytest
+
+
+def find_pyfiles() -> typing.Iterator[pathlib.Path]:
+    """Return an iterator of the files to format."""
+    return itertools.chain(
+        pathlib.Path("../gdbmongo").rglob("*.py"),
+        pathlib.Path("../gdbmongo").rglob("*.pyi"),
+        pathlib.Path("../stubs").rglob("*.pyi"),
+        pathlib.Path("../tests").rglob("*.py"))
 
 
 def run_yapf(yapf, fix: bool) -> bool:
@@ -29,11 +41,8 @@ def run_yapf(yapf, fix: bool) -> bool:
     ret = yapf.main([
         None,
         "--in-place" if fix else "--diff",
-        "--recursive",
         "--verbose",
-        "../gdbmongo/",
-        "../tests/",
-    ])
+    ] + [str(path) for path in find_pyfiles()])
 
     return ret == 0 or fix
 
