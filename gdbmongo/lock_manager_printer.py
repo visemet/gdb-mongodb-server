@@ -27,13 +27,14 @@ core file can be displayed with the following commands:
 import typing
 
 import gdb
+from gdb.printing import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
 
 from gdbmongo import stdlib_printers
 from gdbmongo.abseil_printers import AbslNodeHashMapPrinter
 from gdbmongo.decorable_printer import DecorationContainerPrinter
 
 
-def gdb_lookup_value(symbol_name: str) -> typing.Optional[gdb.Value]:
+def gdb_lookup_value(symbol_name: str, /) -> typing.Optional[gdb.Value]:
     """Return the gdb.Value corresponding to the symbol name given."""
     if (symbol := gdb.lookup_symbol(symbol_name)[0]) is not None:
         return symbol.value()
@@ -41,20 +42,35 @@ def gdb_lookup_value(symbol_name: str) -> typing.Optional[gdb.Value]:
     return None
 
 
-# pylint: disable-next=too-few-public-methods
-class ServiceContextDecorationMixin:
+class ServiceContextDecorationMixin(typing.Protocol):
     """Class to add support for constructing from the global ServiceContext if the subclass already
     supports constructing from a ServiceContext explicitly."""
 
     Decoration = typing.TypeVar("Decoration", bound="ServiceContextDecorationMixin")
 
-    from_service_context: typing.Callable[[typing.Type[Decoration], gdb.Value], Decoration]
+    @classmethod
+    def from_service_context(cls: typing.Type[Decoration], service_context: gdb.Value,
+                             /) -> Decoration:
+        """Return a Decoration from its decoration on ServiceContext."""
+        ...
 
     @classmethod
     def from_global_service_context(cls: typing.Type[Decoration]) -> Decoration:
         """Return a Decoration printer from its decoration on the global ServiceContext."""
         service_context = gdb_lookup_value("mongo::(anonymous namespace)::globalServiceContext")
+        assert service_context is not None
         return cls.from_service_context(service_context)
+
+
+# pylint: disable-next=missing-class-docstring
+# pylint: disable-next=too-few-public-methods
+class CollectionCatalogGetter(typing.Protocol):
+
+    short_name: typing.ClassVar[str]
+    catalog_type: gdb.Type
+
+    def __call__(self, decoration: gdb.Value, /) -> gdb.Value:
+        ...
 
 
 # We don't have to_string() or children() defined on _CollectionCatalogPrinter right now. Until we
@@ -63,11 +79,13 @@ class ServiceContextDecorationMixin:
 class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
     """Pretty-printer for mongo::CollectionCatalog."""
 
-    def __init__(self, val):
+    # pylint: disable-next=super-init-not-called
+    # See https://github.com/PyCQA/pylint/issues/4790.
+    def __init__(self, val: gdb.Value, /) -> None:
         self.resources = val["_resourceInformation"]
         self.val = val
 
-    def lookup_resource_name(self, res_id: gdb.Value) -> typing.Optional[gdb.Value]:
+    def lookup_resource_name(self, res_id: gdb.Value, /) -> typing.Optional[gdb.Value]:
         """Return a gdb.Value containing the database or collection namespace string of the
         resource.
         """
@@ -87,32 +105,38 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
         return namespaces[0] if len(namespaces) == 1 else None
 
     # pylint: disable-next=too-few-public-methods
-    class _LatestCollectionCatalogDecoration:
+    class _LatestCollectionCatalogDecoration(CollectionCatalogGetter):
 
         short_name = "LatestCollectionCatalog"
 
-        def __init__(self):
+        # pylint: disable-next=super-init-not-called
+        # See https://github.com/PyCQA/pylint/issues/4790.
+        def __init__(self) -> None:
             self.catalog_type = gdb.lookup_type(
                 "mongo::(anonymous namespace)::LatestCollectionCatalog")
 
-        def __call__(self, decoration: gdb.Value) -> gdb.Value:
+        def __call__(self, decoration: gdb.Value, /) -> gdb.Value:
             return stdlib_printers.SharedPointerPrinter(
                 "std::shared_ptr", decoration["catalog"]).pointer.dereference()
 
     # pylint: disable-next=too-few-public-methods
-    class _CollectionCatalogDecoration:
+    class _CollectionCatalogDecoration(CollectionCatalogGetter):
 
         short_name = "CollectionCatalog"
 
-        def __init__(self):
+        # pylint: disable-next=super-init-not-called
+        # See https://github.com/PyCQA/pylint/issues/4790.
+        def __init__(self) -> None:
             self.catalog_type = gdb.lookup_type("mongo::CollectionCatalog")
 
-        def __call__(self, decoration: gdb.Value) -> gdb.Value:
+        def __call__(self, decoration: gdb.Value, /) -> gdb.Value:
             return decoration
 
     @classmethod
-    def from_service_context(cls, service_context):
+    def from_service_context(cls, service_context: gdb.Value, /) -> "_CollectionCatalogPrinter":
         """Return a _CollectionCatalogPrinter from its decoration on ServiceContext."""
+        catalog_getter: CollectionCatalogGetter
+
         try:
             catalog_getter = cls._LatestCollectionCatalogDecoration()
         except gdb.error as err:
@@ -136,20 +160,22 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
         return cls(catalog)
 
 
-class LockManagerPrinter(ServiceContextDecorationMixin):
+class LockManagerPrinter(PrettyPrinterProtocol, SupportsDisplayHint, ServiceContextDecorationMixin):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::LockManager."""
 
-    def __init__(self, val):
+    # pylint: disable-next=super-init-not-called
+    # See https://github.com/PyCQA/pylint/issues/4790.
+    def __init__(self, val: gdb.Value, /) -> None:
         self.buckets = val["_lockBuckets"]
         self.num_buckets = int(val["_numLockBuckets"])
         self.val = val
 
     @staticmethod
-    def display_hint():
+    def display_hint() -> typing.Literal["map"]:
         return "map"
 
-    def to_string(self):
+    def to_string(self) -> str:
         # The LockManagerPrinter.children() method skips over resources which have no locks granted
         # on them to match the behavior of mongo::LockManager::dump(). However, no output when
         # calling `python print(lock_mgr.val)` would be confusing to users so we implement
@@ -161,7 +187,7 @@ class LockManagerPrinter(ServiceContextDecorationMixin):
 
         return "mongo::LockManager dump (no strong locks held or pending)"
 
-    def children(self):
+    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
         for i in range(self.num_buckets):
             bucket_data = AbslNodeHashMapPrinter(self.buckets[i]["data"])
             for (res_id, lock_head_ptr) in bucket_data.items():
@@ -175,7 +201,7 @@ class LockManagerPrinter(ServiceContextDecorationMixin):
                     yield ("", lock_head)
 
     @classmethod
-    def from_service_context(cls, service_context):
+    def from_service_context(cls, service_context: gdb.Value, /) -> "LockManagerPrinter":
         """Return a LockManagerPrinter from its decoration on ServiceContext."""
         lock_manager_type = gdb.lookup_type("mongo::LockManager")
 
@@ -190,7 +216,7 @@ class LockManagerPrinter(ServiceContextDecorationMixin):
         return cls(lock_manager)
 
     @classmethod
-    def from_global(cls):
+    def from_global(cls) -> "LockManagerPrinter":
         """Return a LockManagerPrinter from the global LockManager."""
         # The global LockManager was previously its own global before becoming a decoration on the
         # global ServiceContext in SERVER-52516.
@@ -202,21 +228,21 @@ class LockManagerPrinter(ServiceContextDecorationMixin):
         return cls.from_global_service_context()
 
 
-class LockRequestListPrinter:
+class LockRequestListPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::LockRequestList (doubly-linked list)."""
 
-    def __init__(self, val):
+    def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
     @staticmethod
-    def display_hint():
+    def display_hint() -> typing.Literal["array"]:
         return "array"
 
-    def to_string(self):
+    def to_string(self) -> str:
         return "mongo::LockRequestList" if self else "Empty mongo::LockRequestList"
 
-    def children(self):
+    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
         lock_request = self.val["_front"]
         while lock_request != 0:
             yield ("", lock_request.dereference())
@@ -228,25 +254,27 @@ class LockRequestListPrinter:
 
 
 # pylint: disable-next=too-few-public-methods
-class ResourceIdPrinter:
+class ResourceIdPrinter(SupportsToString):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::ResourceId."""
 
-    def __init__(self, val):
+    def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
         self.full_hash = int(val["_fullHash"])
 
-        resource_type_bits = int(gdb_lookup_value("mongo::ResourceId::resourceTypeBits"))
-        self.resource_type = gdb.Value(self.full_hash >> (64 - resource_type_bits)).cast(
+        resource_type_bits = gdb_lookup_value("mongo::ResourceId::resourceTypeBits")
+        assert resource_type_bits is not None
+        self.resource_type = gdb.Value(self.full_hash >> (64 - int(resource_type_bits))).cast(
             gdb.lookup_type("mongo::ResourceType"))
-        self.hash_id = self.full_hash & ((2**64 - 1) >> resource_type_bits)
+        self.hash_id = self.full_hash & ((2**64 - 1) >> int(resource_type_bits))
 
-    def to_string(self):
+    def to_string(self) -> str:
         ret = f"{{{self.full_hash}: {self.resource_type}, {self.hash_id}}}"
 
         if self.resource_type == gdb_lookup_value("mongo::RESOURCE_MUTEX"):
             res_id_factory = gdb_lookup_value(
                 "mongo::(anonymous namespace)::ResourceIdFactory::resourceIdFactory")
+            assert res_id_factory is not None
 
             iterator = stdlib_printers.StdVectorPrinter("std::vector",
                                                         res_id_factory["labels"]).children()
@@ -266,7 +294,7 @@ class ResourceIdPrinter:
 
 
 # pylint: disable-next=too-few-public-methods
-class ResourceTypePrinter:
+class ResourceTypePrinter(SupportsToString):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::ResourceType"""
 
@@ -293,14 +321,14 @@ class ResourceTypePrinter:
         "Mutex",
     )
 
-    def __init__(self, val):
+    def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
-    def to_string(self):
+    def to_string(self) -> str:
         return self.resource_type_names[int(self.val)]
 
 
-def add_printers(pretty_printer):
+def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
     """Add the LockManager related printers to the pretty printer collection given."""
     pretty_printer.add_printer("mongo::LockManager", "^mongo::LockManager$", LockManagerPrinter)
     pretty_printer.add_printer("mongo::LockRequestList", "^mongo::LockRequestList$",

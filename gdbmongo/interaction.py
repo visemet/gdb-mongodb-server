@@ -26,7 +26,7 @@ from gdbmongo.detect_toolchain import ToolchainVersionDetector
 from gdbmongo.stdlib_printers_loader import resolve_import
 
 
-def _import_libstdcxx_printers(executable, *, register_libstdcxx_printers):
+def _import_libstdcxx_printers(executable: str, /, *, register_libstdcxx_printers: bool) -> None:
     """Import the version of the libstdc++ GDB pretty printers corresponding to the version of the
     MongoDB toolchain the executable was compiled with. Register the imported module on sys.modules
     and optionally register the pretty printers with GDB itself, if requested.
@@ -42,7 +42,8 @@ def _import_libstdcxx_printers(executable, *, register_libstdcxx_printers):
         module.register_libstdcxx_printers(gdb.current_objfile())
 
 
-def register_printers(*, essentials=True, stdlib=False, abseil=False, mongo_extras=False):
+def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: bool = False,
+                      mongo_extras: bool = False) -> None:
     """Register the pretty printers defined by the gdbmongo package with GDB itself.
 
     The pretty printer collections other than gdbmongo-essentials are defaulted to off to avoid
@@ -71,7 +72,7 @@ def register_printers(*, essentials=True, stdlib=False, abseil=False, mongo_extr
         _import_libstdcxx_printers(executable, register_libstdcxx_printers=stdlib)
     else:
 
-        def on_user_at_prompt():
+        def on_user_at_prompt() -> None:
             """Import the libstdc++ GDB pretty printers when either the `attach <pid>` or
             `core-file <pathname>` commands are run in GDB.
             """

@@ -18,11 +18,12 @@
 import typing
 
 import gdb
+from gdb.printing import PrettyPrinterProtocol, SupportsDisplayHint
 
 from gdbmongo import stdlib_printers
 
 
-def gdb_resolve_type(typ: gdb.Type) -> gdb.Type:
+def gdb_resolve_type(typ: gdb.Type, /) -> gdb.Type:
     """Look up the name of a C++ type with any typedefs, pointers, and references stripped.
 
     This function is useful in contexts where template arguments can be pointers because GDB may not
@@ -34,11 +35,12 @@ def gdb_resolve_type(typ: gdb.Type) -> gdb.Type:
         typ = typ.target().strip_typedefs()
 
     typename = typ.tag if typ.tag is not None else typ.name
+    assert typename is not None
     return gdb.lookup_type(typename)
 
 
 # pylint: disable-next=invalid-name
-def AbslHashContainerIterator(container):
+def AbslHashContainerIterator(container: gdb.Value, /) -> typing.Iterator[gdb.Value]:
     """Return a generator of every node in the given absl::container_internal::raw_hash_set or
     derived class.
     """
@@ -56,14 +58,21 @@ def AbslHashContainerIterator(container):
             yield slots[i]
 
 
-class AbslHashSetPrinterBase:
+# pylint: disable-next=missing-class-docstring
+# pylint: disable-next=too-few-public-methods
+class AbslPrinterProtocol(PrettyPrinterProtocol, SupportsDisplayHint, typing.Protocol):
+
+    template_name: typing.ClassVar[str]
+    type_aliases: typing.ClassVar[typing.Iterable[str]]
+
+
+class AbslHashSetPrinterBase(AbslPrinterProtocol):
     # pylint: disable=missing-function-docstring
     """Pretty-printer base class for absl::node_hash_set<T> and absl::flat_hash_set<T>."""
 
-    template_name: str
-    type_aliases: typing.Iterable[str]
-
-    def __init__(self, val):
+    # pylint: disable-next=super-init-not-called
+    # See https://github.com/PyCQA/pylint/issues/4790.
+    def __init__(self, val: gdb.Value, /) -> None:
         self.element_type = val.type.template_argument(0)
         self.size = int(val["size_"])
         self.val = val
@@ -71,14 +80,14 @@ class AbslHashSetPrinterBase:
         gdb_resolve_type(self.element_type)
 
     @staticmethod
-    def display_hint():
+    def display_hint() -> typing.Literal["array"]:
         return "array"
 
-    def to_string(self):
+    def to_string(self) -> str:
         return (f"{self.template_name}<{self.element_type}> with"
                 f" {stdlib_printers.num_elements(self.size)}")
 
-    def children(self):
+    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
         count = 0
         for elem in AbslHashContainerIterator(self.val):
             # The first element in the tuple here is technically ignored when the value is printed
@@ -87,7 +96,7 @@ class AbslHashSetPrinterBase:
             yield (f"[{count}]", self._extract_element(elem))
             count += 1
 
-    def _extract_element(self, elem_val):
+    def _extract_element(self, elem_val: gdb.Value, /) -> gdb.Value:
         raise NotImplementedError("AbslHashSetPrinterBase._extract_element")
 
 
@@ -97,7 +106,7 @@ class AbslNodeHashSetPrinter(AbslHashSetPrinterBase):
     template_name = "absl::node_hash_set"
     type_aliases = ("absl::lts_20210324::node_hash_set", )
 
-    def _extract_element(self, elem_val):
+    def _extract_element(self, elem_val: gdb.Value, /) -> gdb.Value:
         # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/internal/node_hash_policy.h#L75
         return elem_val.dereference()
 
@@ -108,19 +117,18 @@ class AbslFlatHashSetPrinter(AbslHashSetPrinterBase):
     template_name = "absl::flat_hash_set"
     type_aliases = ("absl::lts_20210324::flat_hash_set", )
 
-    def _extract_element(self, elem_val):
+    def _extract_element(self, elem_val: gdb.Value, /) -> gdb.Value:
         # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/flat_hash_set.h#L478
         return elem_val
 
 
-class AbslHashMapPrinterBase:
+class AbslHashMapPrinterBase(AbslPrinterProtocol):
     # pylint: disable=missing-function-docstring
     """Pretty-printer base class for absl::node_hash_map<K, V> and absl::flat_hash_map<K, V>."""
 
-    template_name: str
-    type_aliases: typing.Iterable[str]
-
-    def __init__(self, val):
+    # pylint: disable-next=super-init-not-called
+    # See https://github.com/PyCQA/pylint/issues/4790.
+    def __init__(self, val: gdb.Value) -> None:
         self.key_type = val.type.template_argument(0)
         self.value_type = val.type.template_argument(1)
         self.size = int(val["size_"])
@@ -130,14 +138,14 @@ class AbslHashMapPrinterBase:
         gdb_resolve_type(self.value_type)
 
     @staticmethod
-    def display_hint():
+    def display_hint() -> typing.Literal["map"]:
         return "map"
 
-    def to_string(self):
+    def to_string(self) -> str:
         return (f"{self.template_name}<{self.key_type}, {self.value_type}> with"
                 f" {stdlib_printers.num_elements(self.size)}")
 
-    def children(self):
+    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
         for (i, (key, value)) in enumerate(self.items()):
             # The first elements in the tuples here are technically ignored when the value is
             # printed because we've configured a "map" display hint. Regardless, we use the same
@@ -145,13 +153,14 @@ class AbslHashMapPrinterBase:
             yield (f"[{i}]", key)
             yield (f"[{i}]", value)
 
-    def items(self):
+    def items(self) -> typing.Iterator[typing.Tuple[gdb.Value, gdb.Value]]:
         """Return a generator of key-value pairs."""
         for kvp in AbslHashContainerIterator(self.val):
             (key, value) = self._extract_key_value_pair(kvp)
             yield (key, value)
 
-    def _extract_key_value_pair(self, kvp_value):
+    def _extract_key_value_pair(self, kvp_value: gdb.Value,
+                                /) -> typing.Tuple[gdb.Value, gdb.Value]:
         raise NotImplementedError("AbslHashMapPrinterBase._extract_key_value_pair")
 
 
@@ -161,7 +170,8 @@ class AbslNodeHashMapPrinter(AbslHashMapPrinterBase):
     template_name = "absl::node_hash_map"
     type_aliases = ("absl::lts_20210324::node_hash_map", )
 
-    def _extract_key_value_pair(self, kvp_value):
+    def _extract_key_value_pair(self, kvp_value: gdb.Value,
+                                /) -> typing.Tuple[gdb.Value, gdb.Value]:
         # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/node_hash_map.h#L580
         return (kvp_value["first"], kvp_value["second"])
 
@@ -172,12 +182,13 @@ class AbslFlatHashMapPrinter(AbslHashMapPrinterBase):
     template_name = "absl::flat_hash_map"
     type_aliases = ("absl::lts_20210324::flat_hash_map", )
 
-    def _extract_key_value_pair(self, kvp_value):
+    def _extract_key_value_pair(self, kvp_value: gdb.Value,
+                                /) -> typing.Tuple[gdb.Value, gdb.Value]:
         # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/flat_hash_map.h#L586-L588
         return (kvp_value["key"], kvp_value["value"]["second"])
 
 
-def add_printers(pretty_printer):
+def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
     """Add the Abseil printers to the pretty printer collection given."""
     for printer in (AbslNodeHashSetPrinter, AbslFlatHashSetPrinter, AbslNodeHashMapPrinter,
                     AbslFlatHashMapPrinter):

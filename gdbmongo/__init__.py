@@ -17,6 +17,8 @@
 Its primary target audience is MongoDB employees.
 """
 
+import typing
+
 try:
     import gdb
 except ImportError:
@@ -26,6 +28,8 @@ except ImportError:
 else:
     from gdbmongo.interaction import register_printers
     from gdbmongo.lock_manager_printer import LockManagerPrinter
+
+__version__: typing.Optional[str]
 
 try:
     from gdbmongo._version import version as __version__

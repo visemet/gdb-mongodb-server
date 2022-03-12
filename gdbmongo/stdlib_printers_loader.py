@@ -28,9 +28,8 @@ import gdbmongo.detect_toolchain
 MODULE_NAME = "gdb.libstdcxx.v6"
 
 
-def resolve_import(
-    toolchain_info: gdbmongo.detect_toolchain.ToolchainInfo
-) -> typing.Tuple[types.ModuleType, typing.Callable[[], None]]:
+def resolve_import(toolchain_info: gdbmongo.detect_toolchain.ToolchainInfo,
+                   /) -> typing.Tuple[types.ModuleType, typing.Callable[[], None]]:
     """Load the module containing the libstdc++ GDB pretty printers.
 
     Returns a pair of the gdb.libstdcxx.v6 module and a 0-argument function to register the module
@@ -44,14 +43,16 @@ def resolve_import(
 
     module_location = libstdcxx_python_home.joinpath("libstdcxx", "v6", "__init__.py")
     spec = importlib.util.spec_from_file_location(MODULE_NAME, module_location)
+    assert spec is not None
     module = importlib.util.module_from_spec(spec)
     # Unlike in https://docs.python.org/3.9/library/importlib.html#importing-a-source-file-directly,
     # we aren't adding an entry to sys.modules yet. It is the caller's responsibility to do so and
     # therefore helps centralize all of the registration side effects. The gdb.libstdcxx.v6 package
     # doesn't depend on there being an entry in sys.modules when it is executed anyway.
+    assert spec.loader is not None
     spec.loader.exec_module(module)
 
-    def register_module():
+    def register_module() -> None:
         sys.modules[MODULE_NAME] = module
 
     return module, register_module

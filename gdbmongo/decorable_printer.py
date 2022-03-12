@@ -28,13 +28,15 @@ decorated values on the global ServiceContext can be displayed with the followin
 """
 
 import re
+import typing
 
 import gdb
+from gdb.printing import PrettyPrinterProtocol, SupportsDisplayHint
 
 from gdbmongo import stdlib_printers
 
 
-class DecorationContainerPrinter:
+class DecorationContainerPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::DecorationContainer<DecoratedType>.
 
@@ -43,7 +45,7 @@ class DecorationContainerPrinter:
     symbol_name_regexp = re.compile(r"^(.*) in ")
     type_name_regexp = re.compile(r"^(.*[\w>])([\s\*]*)$")
 
-    def __init__(self, val):
+    def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
         decoration_registry = val["_registry"]
@@ -54,12 +56,12 @@ class DecorationContainerPrinter:
         self.constructor_regexp = re.compile(
             fr"^void {registry_type.name}::constructAt<\s*(.*)\s*>\(void\*\)$")
 
-    def to_string(self):
+    def to_string(self) -> str:
         iterator = stdlib_printers.StdVectorPrinter("std::vector", self.decorations_info).children()
-        length = iterator.finish - iterator.item
+        length = int(iterator.finish - iterator.item)
         return f"{self.val.type.name} with {stdlib_printers.num_elements(length)}"
 
-    def children(self):
+    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
         decorations_storage = stdlib_printers.UniquePointerPrinter("std::unique_ptr",
                                                                    self.decorations_storage).pointer
 
@@ -76,7 +78,7 @@ class DecorationContainerPrinter:
                 f"[{index}] = ({decoration_type.pointer()}) {hex(int(decoration_value.address))}",
                 decoration_value.cast(decoration_type))
 
-    def _lookup_decoration_type(self, type_name: str, descriptor: gdb.Value) -> gdb.Type:
+    def _lookup_decoration_type(self, type_name: str, descriptor: gdb.Value, /) -> gdb.Type:
         """Return the type of the decoration value."""
         # We cannot use gdb.lookup_type() when the decoration type is a pointer type, e.g.
         # ServiceContext::declareDecoration<VectorClock*>(). gdb.parse_and_eval() is one of the few
@@ -86,7 +88,7 @@ class DecorationContainerPrinter:
         escaped = self.type_name_regexp.sub(r"'\1'\2*", type_name)
         return gdb.parse_and_eval(f"({escaped}) {int(descriptor.address)}").type.target()
 
-    def _get_decoration_type_name(self, descriptor: gdb.Value) -> str:
+    def _get_decoration_type_name(self, descriptor: gdb.Value, /) -> str:
         """Return the name of the decoration type."""
         function = descriptor["constructor"]
         address = int(function.dereference().address)
@@ -116,10 +118,13 @@ class DecorationContainerPrinter:
                 " consider adding a fallback mechanism?")
 
         type_name = match.group(1)
-        return self.constructor_regexp.match(type_name).group(1)
+        if (match := self.constructor_regexp.match(type_name)) is None:
+            raise ValueError(f"Unable to extract type name from constructor: {type_name}")
+
+        return match.group(1)
 
 
-def add_printers(pretty_printer):
+def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
     """Add the DecorationContainerPrinter to the pretty printer collection given."""
     pretty_printer.add_printer("mongo::DecorationContainer", "^mongo::DecorationContainer<.*>$",
                                DecorationContainerPrinter)

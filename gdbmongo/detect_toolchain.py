@@ -42,12 +42,12 @@ class ToolchainVersionDetector:
     gcc_version_regexp = re.compile(rb"(?:^|\x00)(GCC: \(GNU\) \d+\.\d+\.\d+)(?:\x00|$)")
     clang_version_regexp = re.compile(rb"(?:^|\x00)(MongoDB clang version \d+\.\d+\.\d+)")
 
-    def __init__(self, executable: StrOrBytesPath):
+    def __init__(self, executable: StrOrBytesPath, /):
         """Initialize the ToolchainVersionDetector with the pathname of an executable."""
         self.executable = executable
 
     @classmethod
-    def readelf(cls, executable: StrOrBytesPath) -> bytes:
+    def readelf(cls, executable: StrOrBytesPath, /) -> bytes:
         """Return the ELF .comment section of the executable.
 
         The ELF .comment section contains information about which compiler(s) were used in building
@@ -67,8 +67,12 @@ class ToolchainVersionDetector:
         return b""
 
     @classmethod
-    def parse_gcc_version(cls, raw_elf_section: bytes,
-                          executable: StrOrBytesPath) -> typing.Optional[str]:
+    def parse_gcc_version(
+        cls,
+        raw_elf_section: bytes,
+        /,
+        executable: StrOrBytesPath,
+    ) -> typing.Optional[str]:
         """Extract the GCC compiler version from the ELF .comment section text.
 
         It is expected for a GCC compiler version to be listed due to the use of libstdc++ in all
@@ -84,7 +88,7 @@ class ToolchainVersionDetector:
         return None
 
     @classmethod
-    def parse_clang_version(cls, raw_elf_section: bytes) -> typing.Optional[str]:
+    def parse_clang_version(cls, raw_elf_section: bytes, /) -> typing.Optional[str]:
         """Extract the clang compiler version from ELF .comment section text, if present."""
         if (match := cls.clang_version_regexp.search(raw_elf_section)) is not None:
             return match.group(1).decode()
@@ -92,7 +96,7 @@ class ToolchainVersionDetector:
         return None
 
     @classmethod
-    def parse_libstdcxx_python_home(cls, gcc_version: str) -> typing.Optional[pathlib.Path]:
+    def parse_libstdcxx_python_home(cls, gcc_version: str, /) -> typing.Optional[pathlib.Path]:
         """Return the /opt/mongodbtoolchain/vN/share/gcc-X.Y.Z/python directory associated with a
         particular GCC compiler version."""
 
