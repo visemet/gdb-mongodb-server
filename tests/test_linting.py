@@ -15,6 +15,9 @@
 ###
 """Test file for checking Python linting."""
 
+import sys
+
+import mypy.api
 import pylint.lint
 import pytest
 
@@ -26,3 +29,20 @@ def test_linting():
         ["--rcfile=../pyproject.toml", "../gdbmongo/", "../stubs/", "../tests/"], exit=False)
     lint_ok = runner.linter.msg_status == 0
     assert lint_ok, "Changes are needed to address linting issues"
+
+
+def test_typechecking():
+    """Check code and tests for Python type errors."""
+    (normal_report, error_report,
+     exit_status) = mypy.api.run(["--config-file=../pyproject.toml", "../gdbmongo/", "../stubs/"])
+
+    if normal_report:
+        print("\nType checking report:\n", file=sys.stdout)
+        print(normal_report, file=sys.stdout)
+
+    if error_report:
+        print("\nError report:\n", file=sys.stderr)
+        print(error_report, file=sys.stderr)
+
+    typecheck_ok = exit_status == 0
+    assert typecheck_ok, "Changes are needed to address type annotation issues"

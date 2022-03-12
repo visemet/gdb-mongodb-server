@@ -9,6 +9,13 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 write_to = "gdbmongo/_version.py"
 
+[tool.mypy]
+mypy_path = "stubs"
+pretty = true
+python_version = "3.9"
+strict = true
+warn_unreachable = true
+
 [tool.pylint]
 
     [tool.pylint.basic]
