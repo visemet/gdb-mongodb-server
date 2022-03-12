@@ -21,6 +21,7 @@ import typing
 
 class TypeCode(enum.IntEnum):
     """https://sourceware.org/git/?p=binutils-gdb.git;a=blob;f=gdb/gdbtypes.h;hb=refs/tags/gdb-8.3.1-release#l90"""
+
     TYPE_CODE_BITSTRING = -1
     TYPE_CODE_PTR = 1
     TYPE_CODE_ARRAY = 2

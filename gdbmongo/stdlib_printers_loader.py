@@ -37,7 +37,6 @@ def resolve_import(toolchain_info: gdbmongo.detect_toolchain.ToolchainInfo,
     the 0-argument function will NOT have registered the pretty printers with GDB itself. The caller
     must take care to call register_libstdcxx_printers() on the returned module object.
     """
-
     if (libstdcxx_python_home := toolchain_info.libstdcxx_python_home) is None:
         raise ValueError("Unable to import libstdc++ GDB pretty printers")
 

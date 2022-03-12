@@ -58,7 +58,6 @@ class TestStdlibPrinters:
         """Check that the gdb.libstdcxx.v6 package can be loaded without error for the corresponding
         version of the MongoDB toolchain.
         """
-
         (module, _register_module) = resolve_import(toolchain_info)
         assert module.register_libstdcxx_printers is not None
 
@@ -72,7 +71,6 @@ class TestStdlibPrinters:
         """Check that the gdb.libstdcxx.v6 module is only available to import after the returned
         register_module() function has been called.
         """
-
         (_module, register_module) = resolve_import(self.toolchain_info)
         assert "gdb.libstdcxx.v6" not in sys.modules
         assert "gdb.libstdcxx.v6.printers" not in sys.modules

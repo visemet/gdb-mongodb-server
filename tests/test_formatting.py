@@ -36,7 +36,8 @@ def find_pyfiles() -> typing.Iterator[pathlib.Path]:
 def run_yapf(fix: bool) -> bool:
     """Return True if YAPF reports no further changes are needed, and return False otherwise.
 
-    This function always returns True when fix == True."""
+    This function always returns True when fix == True.
+    """
     # We import the module here to suppress the PendingDeprecationWarning.
     # pylint: disable-next=import-outside-toplevel
     import yapf

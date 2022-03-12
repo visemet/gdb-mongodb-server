@@ -40,7 +40,8 @@ class DecorationContainerPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::DecorationContainer<DecoratedType>.
 
-    This includes MongoDB types like ServiceContext, Client, and OperationContext."""
+    This includes MongoDB types like ServiceContext, Client, and OperationContext.
+    """
 
     symbol_name_regexp = re.compile(r"^(.*) in ")
     type_name_regexp = re.compile(r"^(.*[\w>])([\s\*]*)$")

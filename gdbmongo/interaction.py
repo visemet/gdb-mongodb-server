@@ -31,7 +31,6 @@ def _import_libstdcxx_printers(executable: str, /, *, register_libstdcxx_printer
     MongoDB toolchain the executable was compiled with. Register the imported module on sys.modules
     and optionally register the pretty printers with GDB itself, if requested.
     """
-
     detector = ToolchainVersionDetector(executable)
     toolchain_info = detector.detect()
 
@@ -49,7 +48,6 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
     The pretty printer collections other than gdbmongo-essentials are defaulted to off to avoid
     conflicting with the pretty printers defined in the mongodb/mongo repository.
     """
-
     if essentials:
         # It would be weird to not register these pretty printers given the whole purpose of the
         # gdbmongo package, but a user can always choose to disable them explicitly so we may as
@@ -76,7 +74,6 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
             """Import the libstdc++ GDB pretty printers when either the `attach <pid>` or
             `core-file <pathname>` commands are run in GDB.
             """
-
             if (executable := gdb.selected_inferior().progspace.filename) is None:
                 # The `attach` command would have filled in the filename so we only need to check if
                 # a core dump has been loaded with the executable file also being loaded.

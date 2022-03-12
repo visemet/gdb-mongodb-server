@@ -27,8 +27,8 @@ def gdb_resolve_type(typ: gdb.Type, /) -> gdb.Type:
     """Look up the name of a C++ type with any typedefs, pointers, and references stripped.
 
     This function is useful in contexts where template arguments can be pointers because GDB may not
-    load the fields of the templated entity otherwise."""
-
+    load the fields of the templated entity otherwise.
+    """
     typ = typ.strip_typedefs()
 
     while typ.code in (gdb.TYPE_CODE_PTR, gdb.TYPE_CODE_REF):
@@ -44,7 +44,6 @@ def AbslHashContainerIterator(container: gdb.Value, /) -> typing.Iterator[gdb.Va
     """Return a generator of every node in the given absl::container_internal::raw_hash_set or
     derived class.
     """
-
     capacity = int(container["capacity_"])
     ctrl = container["ctrl_"]
     slots = container["slots_"]

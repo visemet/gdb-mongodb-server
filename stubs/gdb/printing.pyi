@@ -15,7 +15,8 @@
 ###
 """https://sourceware.org/gdb/onlinedocs/gdb/Pretty-Printing-API.html
 https://sourceware.org/gdb/onlinedocs/gdb/Writing-a-Pretty_002dPrinter.html
-https://sourceware.org/gdb/onlinedocs/gdb/gdb_002eprinting.html"""
+https://sourceware.org/gdb/onlinedocs/gdb/gdb_002eprinting.html
+"""
 
 import typing
 

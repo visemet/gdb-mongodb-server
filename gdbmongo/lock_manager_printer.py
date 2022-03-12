@@ -44,7 +44,8 @@ def gdb_lookup_value(symbol_name: str, /) -> typing.Optional[gdb.Value]:
 
 class ServiceContextDecorationMixin(typing.Protocol):
     """Class to add support for constructing from the global ServiceContext if the subclass already
-    supports constructing from a ServiceContext explicitly."""
+    supports constructing from a ServiceContext explicitly.
+    """
 
     Decoration = typing.TypeVar("Decoration", bound="ServiceContextDecorationMixin")
 
@@ -89,7 +90,6 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
         """Return a gdb.Value containing the database or collection namespace string of the
         resource.
         """
-
         iterator = stdlib_printers.StdMapPrinter("std::map", self.resources).children()
         for ((_, iter_res_id), (_, iter_nss_set)) in zip(iterator, iterator):
             if iter_res_id == res_id:

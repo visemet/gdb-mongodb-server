@@ -27,6 +27,7 @@ import warnings
 
 class ToolchainInfo(typing.NamedTuple):
     """Info about the MongoDB toolchain used to compile an executable."""
+
     compiler: typing.Optional[str]
     libstdcxx_python_home: typing.Optional[pathlib.Path]
 
@@ -51,8 +52,8 @@ class ToolchainVersionDetector:
         """Return the ELF .comment section of the executable.
 
         The ELF .comment section contains information about which compiler(s) were used in building
-        the executable."""
-
+        the executable.
+        """
         with tempfile.NamedTemporaryFile() as output_file:
             result = subprocess.run(
                 [cls.objcopy, "--dump-section", f".comment={str(output_file.name)}", executable],
@@ -76,8 +77,8 @@ class ToolchainVersionDetector:
         """Extract the GCC compiler version from the ELF .comment section text.
 
         It is expected for a GCC compiler version to be listed due to the use of libstdc++ in all
-        MongoDB binaries."""
-
+        MongoDB binaries.
+        """
         if (match := cls.gcc_version_regexp.search(raw_elf_section)) is not None:
             return match.group(1).decode()
 
@@ -98,8 +99,8 @@ class ToolchainVersionDetector:
     @classmethod
     def parse_libstdcxx_python_home(cls, gcc_version: str, /) -> typing.Optional[pathlib.Path]:
         """Return the /opt/mongodbtoolchain/vN/share/gcc-X.Y.Z/python directory associated with a
-        particular GCC compiler version."""
-
+        particular GCC compiler version.
+        """
         if gcc_version.endswith(" 8.5.0"):
             return pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")
 
