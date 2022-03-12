@@ -33,13 +33,16 @@ def find_pyfiles() -> typing.Iterator[pathlib.Path]:
         pathlib.Path("../tests").rglob("*.py"))
 
 
-def run_yapf(yapf, fix: bool) -> bool:
+def run_yapf(fix: bool) -> bool:
     """Return True if YAPF reports no further changes are needed, and return False otherwise.
 
     This function always returns True when fix == True."""
+    # We import the module here to suppress the PendingDeprecationWarning.
+    # pylint: disable-next=import-outside-toplevel
+    import yapf
 
     ret = yapf.main([
-        None,
+        "",
         "--in-place" if fix else "--diff",
         "--verbose",
     ] + [str(path) for path in find_pyfiles()])
@@ -48,12 +51,8 @@ def run_yapf(yapf, fix: bool) -> bool:
 
 
 @pytest.mark.filterwarnings(r"ignore:lib2to3 package is deprecated.*:PendingDeprecationWarning")
-def test_formatting():
+def test_formatting() -> None:
     """Check code and tests for Python formatting errors."""
-    # We import the module here to suppress the PendingDeprecationWarning.
-    # pylint: disable-next=import-outside-toplevel
-    import yapf
-
     should_fix = distutils.util.strtobool(os.environ.get("TOX_YAPF_FIX", "0"))
-    format_ok = run_yapf(yapf, should_fix)
+    format_ok = run_yapf(should_fix)
     assert format_ok, "Changes are needed to address formatting issues; try running `tox -e format`"

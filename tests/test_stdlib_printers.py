@@ -17,6 +17,7 @@
 
 import pathlib
 import sys
+import typing
 import unittest.mock
 
 import pytest
@@ -27,7 +28,7 @@ from gdbmongo.stdlib_printers_loader import resolve_import
 
 
 @pytest.fixture
-def unload_libstdcxx_printers():
+def unload_libstdcxx_printers() -> typing.Generator[None, None, None]:
     """Remove the gdb.libstdcxx.v6 package and its submodules from sys.modules."""
     yield
     sys.modules.pop("gdb.libstdcxx.v6", None)
@@ -53,7 +54,7 @@ class TestStdlibPrinters:
             id="v4/gcc-11.2.0"),
     ))
     @staticmethod
-    def test_can_load_module_from_toolchain(toolchain_info):
+    def test_can_load_module_from_toolchain(toolchain_info: ToolchainInfo) -> None:
         """Check that the gdb.libstdcxx.v6 package can be loaded without error for the corresponding
         version of the MongoDB toolchain.
         """
@@ -61,13 +62,13 @@ class TestStdlibPrinters:
         (module, _register_module) = resolve_import(toolchain_info)
         assert module.register_libstdcxx_printers is not None
 
-    def test_no_side_effects_from_loading_module(self):
+    def test_no_side_effects_from_loading_module(self) -> None:
         """Check that calling resolve_import() won't modify sys.modules automatically."""
         current_modules = frozenset(sys.modules.keys())
         resolve_import(self.toolchain_info)
         assert current_modules == sys.modules.keys()
 
-    def test_can_import_module_after_registering(self):
+    def test_can_import_module_after_registering(self) -> None:
         """Check that the gdb.libstdcxx.v6 module is only available to import after the returned
         register_module() function has been called.
         """
@@ -79,7 +80,7 @@ class TestStdlibPrinters:
         assert "gdb.libstdcxx.v6" in sys.modules
         assert "gdb.libstdcxx.v6.printers" not in sys.modules
 
-    def test_can_reference_printer_after_registering(self):
+    def test_can_reference_printer_after_registering(self) -> None:
         """Check that pretty printer classes are only available to import after the returned
         register_module() function has been called.
         """
@@ -89,7 +90,7 @@ class TestStdlibPrinters:
         register_module()
         assert gdbmongo.stdlib_printers.UniquePointerPrinter is not None
 
-    def test_can_list_printer_names_after_registering(self):
+    def test_can_list_printer_names_after_registering(self) -> None:
         """Check that pretty printer classes are only available to list after the returned
         register_module() function has been called.
         """

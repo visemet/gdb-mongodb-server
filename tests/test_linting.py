@@ -23,7 +23,7 @@ import pytest
 
 
 @pytest.mark.filterwarnings(r"ignore:In astroid 3.0.0 NodeNG.statement\(\).*:DeprecationWarning")
-def test_linting():
+def test_linting() -> None:
     """Check code and tests for Python linting errors."""
     runner = pylint.lint.Run(
         ["--rcfile=../pyproject.toml", "../gdbmongo/", "../stubs/", "../tests/"], exit=False)
@@ -31,10 +31,10 @@ def test_linting():
     assert lint_ok, "Changes are needed to address linting issues"
 
 
-def test_typechecking():
+def test_typechecking() -> None:
     """Check code and tests for Python type errors."""
-    (normal_report, error_report,
-     exit_status) = mypy.api.run(["--config-file=../pyproject.toml", "../gdbmongo/", "../stubs/"])
+    (normal_report, error_report, exit_status) = mypy.api.run(
+        ["--config-file=../pyproject.toml", "../gdbmongo/", "../stubs/", "../tests/"])
 
     if normal_report:
         print("\nType checking report:\n", file=sys.stdout)

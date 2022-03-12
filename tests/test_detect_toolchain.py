@@ -19,6 +19,7 @@ import pathlib
 import shutil
 import tarfile
 import tempfile
+import typing
 import urllib.request
 
 import pytest
@@ -43,7 +44,7 @@ from gdbmongo.detect_toolchain import ToolchainInfo, ToolchainVersionDetector
             "GCC: (GNU) 8.5.0",
             id="gcc-with-clang-and-lld"),
     ))
-def test_parse_gcc_version(raw_elf_section: bytes, expected: str):
+def test_parse_gcc_version(raw_elf_section: bytes, expected: str) -> None:
     """Check the extracted GCC compiler version from a sample ELF .comment section."""
     assert ToolchainVersionDetector.parse_gcc_version(raw_elf_section, executable="") == expected
 
@@ -63,7 +64,7 @@ def test_parse_gcc_version(raw_elf_section: bytes, expected: str):
             "MongoDB clang version 12.0.1",
             id="clang-with-multiple-gcc"),
     ))
-def test_parse_clang_version(raw_elf_section: bytes, expected: str):
+def test_parse_clang_version(raw_elf_section: bytes, expected: typing.Optional[str]) -> None:
     """Check the extracted clang compiler version from a sample ELF .comment section."""
     clang_version = ToolchainVersionDetector.parse_clang_version(raw_elf_section)
 
@@ -101,14 +102,17 @@ def test_parse_clang_version(raw_elf_section: bytes, expected: str):
                           pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")),
             id="v4-clang"),
     ))
-def test_detected_toolchain_from_real_executable(url: str, expected: ToolchainInfo):
+def test_detected_toolchain_from_real_executable(url: str, expected: ToolchainInfo) -> None:
     """Check the toolchain info for a real mongod executable."""
     with tempfile.NamedTemporaryFile() as output_file:
         with urllib.request.urlopen(url) as response:
             with tarfile.open(fileobj=response, mode="r|gz") as tarball:
                 while (tarinfo := tarball.next()) is not None:
                     if tarinfo.isfile() and pathlib.Path(tarinfo.path).name == "mongod":
-                        shutil.copyfileobj(tarball.extractfile(tarinfo), output_file)
+                        tarmember = tarball.extractfile(tarinfo)
+                        assert tarmember is not None
+
+                        shutil.copyfileobj(tarmember, output_file)
                         output_file.flush()
                         break
                 else:
