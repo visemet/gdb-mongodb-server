@@ -28,7 +28,7 @@ import typing
 
 import gdb
 
-from gdbmongo import stdlib_printers
+from gdbmongo import stdlib_printers, stdlib_xmethods
 from gdbmongo.abseil_printers import AbslNodeHashMapPrinter
 from gdbmongo.decorable_printer import DecorationContainerPrinter
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
@@ -280,13 +280,10 @@ class ResourceIdPrinter(SupportsToString):
                 "mongo::(anonymous namespace)::ResourceIdFactory::resourceIdFactory")
             assert res_id_factory is not None
 
-            iterator = stdlib_printers.StdVectorPrinter("std::vector",
-                                                        res_id_factory["labels"]).children()
-
-            # `iterator.item` refers to the front of the array underlying the std::vector initially.
-            # We could achieve a similar effect by calling into the VectorAtWorker Xmethod for
-            # std::vector, but that would be a bit more effort.
-            ret += f", {iterator.item[self.hash_id]}"
+            resource_labels = res_id_factory["labels"]
+            xmethod_worker = stdlib_xmethods.VectorMethodsMatcher().match(
+                resource_labels.type, "at")
+            ret += f", {xmethod_worker(resource_labels, gdb.Value(self.hash_id))}"
 
         if self.resource_type in (gdb_lookup_value("mongo::RESOURCE_DATABASE"),
                                   gdb_lookup_value("mongo::RESOURCE_COLLECTION")):
