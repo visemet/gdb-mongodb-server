@@ -25,7 +25,7 @@ from gdb._progspace import Progspace
 from gdb._value import Value
 
 
-class SupportsDisplayHint(typing.Protocol):
+class __SupportsDisplayHint(typing.Protocol):
 
     def display_hint(
             self
@@ -33,19 +33,19 @@ class SupportsDisplayHint(typing.Protocol):
         ...
 
 
-class SupportsToString(typing.Protocol):
+class __SupportsToString(typing.Protocol):
 
     def to_string(self) -> str | Value | None:
         ...
 
 
-class SupportsChildren(typing.Protocol):
+class __SupportsChildren(typing.Protocol):
 
     def children(self) -> typing.Iterator[typing.Tuple[str, Value]]:
         ...
 
 
-class PrettyPrinterProtocol(SupportsToString, SupportsChildren, typing.Protocol):
+class __PrettyPrinterProtocol(__SupportsToString, __SupportsChildren, typing.Protocol):
 
     def __init__(self, val: Value, /) -> None:
         ...
@@ -59,7 +59,7 @@ class PrettyPrinter:
         self.subprinters = subprinters
         self.enabled: bool = True
 
-    def __call__(self, val: Value, /) -> SupportsToString | SupportsChildren | None:
+    def __call__(self, val: Value, /) -> __SupportsToString | __SupportsChildren | None:
         ...
 
 
@@ -76,7 +76,7 @@ class RegexpCollectionPrettyPrinter(PrettyPrinter):
         ...
 
     def add_printer(self, name: str, regexp: str,
-                    gen_printer: typing.Type[SupportsToString] | typing.Type[SupportsChildren],
+                    gen_printer: typing.Type[__SupportsToString] | typing.Type[__SupportsChildren],
                     /) -> None:
         ...
 
@@ -88,7 +88,7 @@ class FlagEnumerationPrinter(PrettyPrinter):
 
 
 def register_pretty_printer(obj: Objfile | Progspace | None,
-                            printer: typing.Callable[[Value],
-                                                     SupportsToString | SupportsChildren | None],
+                            printer: typing.Callable[[Value], __SupportsToString
+                                                     | __SupportsChildren | None],
                             replace: bool = False) -> None:
     ...

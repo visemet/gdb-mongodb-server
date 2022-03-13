@@ -37,6 +37,14 @@ ignore = [
     [tool.pylint.basic]
     ignore = "_version.py"
 
+    [tool.pylint.design]
+    ignored-parents = [
+        "gdbmongo.printer_protocol.PrettyPrinterProtocol",
+        "gdbmongo.printer_protocol.SupportsDisplayHint",
+        "gdbmongo.printer_protocol.SupportsToString",
+        "gdbmongo.printer_protocol.SupportsChildren"
+    ]
+
     [tool.pylint.similarities]
     min-similarity-lines = 6
 

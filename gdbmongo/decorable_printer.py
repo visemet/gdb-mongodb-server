@@ -31,9 +31,9 @@ import re
 import typing
 
 import gdb
-from gdb.printing import PrettyPrinterProtocol, SupportsDisplayHint
 
 from gdbmongo import stdlib_printers
+from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint
 
 
 class DecorationContainerPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
@@ -46,6 +46,8 @@ class DecorationContainerPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
     symbol_name_regexp = re.compile(r"^(.*) in ")
     type_name_regexp = re.compile(r"^(.*[\w>])([\s\*]*)$")
 
+    # pylint: disable-next=super-init-not-called
+    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 

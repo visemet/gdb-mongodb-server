@@ -27,11 +27,11 @@ core file can be displayed with the following commands:
 import typing
 
 import gdb
-from gdb.printing import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
 
 from gdbmongo import stdlib_printers
 from gdbmongo.abseil_printers import AbslNodeHashMapPrinter
 from gdbmongo.decorable_printer import DecorationContainerPrinter
+from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
 
 
 def gdb_lookup_value(symbol_name: str, /) -> typing.Optional[gdb.Value]:
@@ -232,6 +232,8 @@ class LockRequestListPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::LockRequestList (doubly-linked list)."""
 
+    # pylint: disable-next=super-init-not-called
+    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
@@ -258,6 +260,8 @@ class ResourceIdPrinter(SupportsToString):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::ResourceId."""
 
+    # pylint: disable-next=super-init-not-called
+    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
         self.full_hash = int(val["_fullHash"])
@@ -321,6 +325,8 @@ class ResourceTypePrinter(SupportsToString):
         "Mutex",
     )
 
+    # pylint: disable-next=super-init-not-called
+    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 

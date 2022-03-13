@@ -18,9 +18,9 @@
 import typing
 
 import gdb
-from gdb.printing import PrettyPrinterProtocol, SupportsDisplayHint
 
 from gdbmongo import stdlib_printers
+from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint
 
 
 def gdb_resolve_type(typ: gdb.Type, /) -> gdb.Type:
