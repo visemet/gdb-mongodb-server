@@ -392,8 +392,15 @@ class UniquePtrDerefWorker(UniquePtrGetWorker):
     ...
 
 
-class UniquePtrSubscriptWorker(UniquePtrGetWorker):
-    ...
+# Intentionally diverging from the true class hierarchy by not inheriting from UniquePtrGetWorker.
+# However, this enables us to keep the signature for __call__ more constrained.
+class UniquePtrSubscriptWorker:
+
+    def __init__(self, elem_type: gdb.Type, /):
+        ...
+
+    def __call__(self, obj: gdb.Value, index: gdb.Value, /) -> gdb.Value:
+        ...
 
 
 class UniquePtrMethodsMatcher:
@@ -440,6 +447,9 @@ class SharedPtrDerefWorker(SharedPtrGetWorker):
 # Intentionally diverging from the true class hierarchy by not inheriting from SharedPtrGetWorker.
 # However, this enables us to keep the signature for __call__ more constrained.
 class SharedPtrSubscriptWorker:
+
+    def __init__(self, elem_type: gdb.Type, /):
+        ...
 
     def __call__(self, obj: gdb.Value, index: gdb.Value, /) -> gdb.Value:
         ...
