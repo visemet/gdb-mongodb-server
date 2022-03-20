@@ -24,6 +24,7 @@ core file can be displayed with the following commands:
     (gdb) python print(lock_mgr.val)
 """
 
+import abc
 import typing
 
 import gdb
@@ -50,10 +51,11 @@ class ServiceContextDecorationMixin(typing.Protocol):
     Decoration = typing.TypeVar("Decoration", bound="ServiceContextDecorationMixin")
 
     @classmethod
+    @abc.abstractmethod
     def from_service_context(cls: typing.Type[Decoration], service_context: gdb.Value,
                              /) -> Decoration:
         """Return a Decoration from its decoration on ServiceContext."""
-        ...
+        raise NotImplementedError
 
     @classmethod
     def from_global_service_context(cls: typing.Type[Decoration]) -> Decoration:
@@ -70,8 +72,9 @@ class CollectionCatalogGetter(typing.Protocol):
     short_name: typing.ClassVar[str]
     catalog_type: gdb.Type
 
+    @abc.abstractmethod
     def __call__(self, decoration: gdb.Value, /) -> gdb.Value:
-        ...
+        raise NotImplementedError
 
 
 # We don't have to_string() or children() defined on _CollectionCatalogPrinter right now. Until we

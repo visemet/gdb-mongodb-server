@@ -33,10 +33,10 @@ import typing
 import gdb
 
 from gdbmongo import stdlib_printers
-from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint
+from gdbmongo.printer_protocol import PrettyPrinterProtocol
 
 
-class DecorationContainerPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
+class DecorationContainerPrinter(PrettyPrinterProtocol):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::DecorationContainer<DecoratedType>.
 

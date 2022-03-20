@@ -18,6 +18,7 @@ https://sourceware.org/gdb/onlinedocs/gdb/Writing-a-Pretty_002dPrinter.html
 https://sourceware.org/gdb/onlinedocs/gdb/gdb_002eprinting.html
 """
 
+import abc
 import typing
 
 from gdb._objfile import Objfile
@@ -25,27 +26,30 @@ from gdb._progspace import Progspace
 from gdb._value import Value
 
 
-class __SupportsDisplayHint(typing.Protocol):
+class _SupportsDisplayHint(typing.Protocol):
 
+    @abc.abstractmethod
     def display_hint(
             self
     ) -> typing.Literal["string"] | typing.Literal["array"] | typing.Literal["map"] | None:
-        ...
+        raise NotImplementedError
 
 
-class __SupportsToString(typing.Protocol):
+class _SupportsToString(typing.Protocol):
 
+    @abc.abstractmethod
     def to_string(self) -> str | Value | None:
-        ...
+        raise NotImplementedError
 
 
-class __SupportsChildren(typing.Protocol):
+class _SupportsChildren(typing.Protocol):
 
+    @abc.abstractmethod
     def children(self) -> typing.Iterator[typing.Tuple[str, Value]]:
-        ...
+        raise NotImplementedError
 
 
-class __PrettyPrinterProtocol(__SupportsToString, __SupportsChildren, typing.Protocol):
+class _PrettyPrinterProtocol(_SupportsToString, _SupportsChildren, typing.Protocol):
 
     def __init__(self, val: Value, /) -> None:
         ...
@@ -59,7 +63,7 @@ class PrettyPrinter:
         self.subprinters = subprinters
         self.enabled: bool = True
 
-    def __call__(self, val: Value, /) -> __SupportsToString | __SupportsChildren | None:
+    def __call__(self, val: Value, /) -> _SupportsToString | _SupportsChildren | None:
         ...
 
 
@@ -76,7 +80,7 @@ class RegexpCollectionPrettyPrinter(PrettyPrinter):
         ...
 
     def add_printer(self, name: str, regexp: str,
-                    gen_printer: typing.Type[__SupportsToString] | typing.Type[__SupportsChildren],
+                    gen_printer: typing.Type[_SupportsToString] | typing.Type[_SupportsChildren],
                     /) -> None:
         ...
 
@@ -88,7 +92,7 @@ class FlagEnumerationPrinter(PrettyPrinter):
 
 
 def register_pretty_printer(obj: Objfile | Progspace | None,
-                            printer: typing.Callable[[Value], __SupportsToString
-                                                     | __SupportsChildren | None],
+                            printer: typing.Callable[[Value], _SupportsToString
+                                                     | _SupportsChildren | None],
                             replace: bool = False) -> None:
     ...

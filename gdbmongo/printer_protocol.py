@@ -25,10 +25,10 @@ import typing
 
 if typing.TYPE_CHECKING:
     import gdb.printing
-    PrettyPrinterProtocol = gdb.printing.__PrettyPrinterProtocol
-    SupportsChildren = gdb.printing.__SupportsChildren
-    SupportsDisplayHint = gdb.printing.__SupportsDisplayHint
-    SupportsToString = gdb.printing.__SupportsToString
+    PrettyPrinterProtocol = gdb.printing._PrettyPrinterProtocol
+    SupportsChildren = gdb.printing._SupportsChildren
+    SupportsDisplayHint = gdb.printing._SupportsDisplayHint
+    SupportsToString = gdb.printing._SupportsToString
 else:
 
     class SupportsChildren(typing.Protocol):

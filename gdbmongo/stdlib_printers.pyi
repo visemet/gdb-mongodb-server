@@ -29,11 +29,17 @@ def function_pointer_to_name(func: gdb.Value, /) -> typing.Optional[str]:
     ...
 
 
-class __PrettyPrinterProtocol(gdb.printing.__PrettyPrinterProtocol, typing.Protocol):
+class __PrettyPrinterProtocol(gdb.printing._PrettyPrinterProtocol, typing.Protocol):
     # The typename argument isn't part of GDB's pretty printing API. The pretty printers defined in
     # the gdb.libstdcxx.v6.printers package aren't registered individually and instead accept a
     # string corresponding to the C++ type for the subprinter.
     def __init__(self, typename: str, val: gdb.Value, /) -> None:
+        ...
+
+    def to_string(self) -> str | gdb.Value | None:
+        ...
+
+    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
         ...
 
 
