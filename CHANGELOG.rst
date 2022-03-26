@@ -5,6 +5,7 @@ Changelog
 ------------------
 
 * Include database name in dump of DatabaseShardingState ResourceMutexes.
+* Avoid truncating namespace strings in LockManager dump.
 
 0.2.0 (2022-03-05)
 ------------------

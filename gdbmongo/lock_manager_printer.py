@@ -88,7 +88,7 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
         self.resources = val["_resourceInformation"]
         self.val = val
 
-    def lookup_resource_name(self, res_id: gdb.Value, /) -> typing.Optional[gdb.Value]:
+    def lookup_resource_name(self, res_id: gdb.Value, /) -> typing.Optional[str]:
         """Return a gdb.Value containing the database or collection namespace string of the
         resource.
         """
@@ -104,7 +104,7 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
             nss for (_, nss) in stdlib_printers.StdSetPrinter("std::set", nss_set).children()
         ]
 
-        return namespaces[0] if len(namespaces) == 1 else None
+        return StdStringPrinter(namespaces[0]).string() if len(namespaces) == 1 else None
 
     # pylint: disable-next=too-few-public-methods
     class _LatestCollectionCatalogDecoration(CollectionCatalogGetter):
