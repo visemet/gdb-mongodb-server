@@ -83,8 +83,6 @@ class CollectionCatalogGetter(typing.Protocol):
 class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
     """Pretty-printer for mongo::CollectionCatalog."""
 
-    # pylint: disable-next=super-init-not-called
-    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.resources = val["_resourceInformation"]
         self.val = val
@@ -112,8 +110,6 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
 
         short_name = "LatestCollectionCatalog"
 
-        # pylint: disable-next=super-init-not-called
-        # See https://github.com/PyCQA/pylint/issues/4790.
         def __init__(self) -> None:
             self.catalog_type = gdb.lookup_type(
                 "mongo::(anonymous namespace)::LatestCollectionCatalog")
@@ -127,8 +123,6 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
 
         short_name = "CollectionCatalog"
 
-        # pylint: disable-next=super-init-not-called
-        # See https://github.com/PyCQA/pylint/issues/4790.
         def __init__(self) -> None:
             self.catalog_type = gdb.lookup_type("mongo::CollectionCatalog")
 
@@ -167,8 +161,6 @@ class LockManagerPrinter(PrettyPrinterProtocol, SupportsDisplayHint, ServiceCont
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::LockManager."""
 
-    # pylint: disable-next=super-init-not-called
-    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.buckets = val["_lockBuckets"]
         self.num_buckets = int(val["_numLockBuckets"])
@@ -235,8 +227,6 @@ class LockRequestListPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::LockRequestList (doubly-linked list)."""
 
-    # pylint: disable-next=super-init-not-called
-    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
@@ -263,8 +253,6 @@ class ResourceIdPrinter(SupportsToString):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::ResourceId."""
 
-    # pylint: disable-next=super-init-not-called
-    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
         self.full_hash = int(val["_fullHash"])
@@ -325,8 +313,6 @@ class ResourceTypePrinter(SupportsToString):
         "Mutex",
     )
 
-    # pylint: disable-next=super-init-not-called
-    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 

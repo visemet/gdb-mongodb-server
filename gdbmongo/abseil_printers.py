@@ -69,8 +69,6 @@ class AbslHashSetPrinterBase(AbslPrinterProtocol):
     # pylint: disable=missing-function-docstring
     """Pretty-printer base class for absl::node_hash_set<T> and absl::flat_hash_set<T>."""
 
-    # pylint: disable-next=super-init-not-called
-    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value, /) -> None:
         self.element_type = val.type.template_argument(0)
         self.size = int(val["size_"])
@@ -125,8 +123,6 @@ class AbslHashMapPrinterBase(AbslPrinterProtocol):
     # pylint: disable=missing-function-docstring
     """Pretty-printer base class for absl::node_hash_map<K, V> and absl::flat_hash_map<K, V>."""
 
-    # pylint: disable-next=super-init-not-called
-    # See https://github.com/PyCQA/pylint/issues/4790.
     def __init__(self, val: gdb.Value) -> None:
         self.key_type = val.type.template_argument(0)
         self.value_type = val.type.template_argument(1)
