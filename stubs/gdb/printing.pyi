@@ -21,6 +21,7 @@ https://sourceware.org/gdb/onlinedocs/gdb/gdb_002eprinting.html
 import abc
 import typing
 
+from gdb._lazy_string import LazyString
 from gdb._objfile import Objfile
 from gdb._progspace import Progspace
 from gdb._value import Value
@@ -38,7 +39,7 @@ class _SupportsDisplayHint(typing.Protocol):
 class _SupportsToString(typing.Protocol):
 
     @abc.abstractmethod
-    def to_string(self) -> str | Value | None:
+    def to_string(self) -> str | Value | LazyString | None:
         raise NotImplementedError
 
 

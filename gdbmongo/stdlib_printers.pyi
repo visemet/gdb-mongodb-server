@@ -20,6 +20,8 @@ import typing
 
 import gdb
 
+from gdbmongo.printer_protocol import LazyString
+
 
 def num_elements(num: int, /) -> str:
     ...
@@ -36,7 +38,7 @@ class __PrettyPrinterProtocol(gdb.printing._PrettyPrinterProtocol, typing.Protoc
     def __init__(self, typename: str, val: gdb.Value, /) -> None:
         ...
 
-    def to_string(self) -> str | gdb.Value | None:
+    def to_string(self) -> str | gdb.Value | LazyString | None:
         ...
 
     def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
@@ -164,7 +166,10 @@ class StdDequeIteratorPrinter(__PrettyPrinterProtocol):
 
 class StdStringPrinter(__PrettyPrinterProtocol):
 
-    def __init__(self, typename: typing.Literal["std::basic_string"], val: gdb.Value, /):
+    # Intentionally not constraining `typename` to be typing.Literal["std::basic_string"] because
+    # the argument is used by StdStringPrinter to set its `new_string` attribute based on whether
+    # the type contains "::__cxx11::basic_string".
+    def __init__(self, typename: str, val: gdb.Value, /):
         ...
 
 

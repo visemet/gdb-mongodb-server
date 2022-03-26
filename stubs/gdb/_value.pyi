@@ -17,6 +17,7 @@
 
 import typing
 
+from gdb._lazy_string import LazyString
 from gdb._type import Type
 
 ConstructibleFrom = bool | int | float | str | Value
@@ -87,6 +88,10 @@ class Value(typing.SupportsInt, typing.SupportsFloat):
     def dynamic_type(self) -> Type:
         ...
 
+    @property
+    def is_lazy(self) -> bool:
+        ...
+
     def cast(self, typ: Type, /) -> Value:
         ...
 
@@ -100,4 +105,13 @@ class Value(typing.SupportsInt, typing.SupportsFloat):
         ...
 
     def referenced_value(self) -> Value:
+        ...
+
+    def string(self, *, encoding: str = "", errors: str = "", length: int = -1) -> str:
+        ...
+
+    def lazy_string(self, *, encoding: str = "", length: int = -1) -> LazyString:
+        ...
+
+    def fetch_lazy(self) -> None:
         ...

@@ -24,12 +24,21 @@ import typing
 # pylint: disable=too-few-public-methods
 
 if typing.TYPE_CHECKING:
+    import gdb._lazy_string
     import gdb.printing
+
+    LazyString = gdb._lazy_string.LazyString
     PrettyPrinterProtocol = gdb.printing._PrettyPrinterProtocol
     SupportsChildren = gdb.printing._SupportsChildren
     SupportsDisplayHint = gdb.printing._SupportsDisplayHint
     SupportsToString = gdb.printing._SupportsToString
 else:
+    import gdb
+
+    # gdb_pymodule_addobject() isn't called for its LazyString class so we expose the type here
+    # ourselves. This attribute won't be used to construct LazyString instances directly. Instead,
+    # it'll be used for type checking and satisfying Mypy.
+    LazyString = type(gdb.parse_and_eval("(char *) 0").lazy_string(length=0))
 
     class SupportsChildren(typing.Protocol):
         ...
