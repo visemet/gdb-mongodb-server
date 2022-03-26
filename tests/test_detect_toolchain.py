@@ -85,6 +85,12 @@ def test_parse_clang_version(raw_elf_section: bytes, expected: typing.Optional[s
             id="v3-gcc"),
         pytest.param(
             # pylint: disable-next=line-too-long
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel-80-64-bit-dynamic-required/bddc8a826383210f0a5d480ba1bb7c3f5e8c7799/binaries/mongo-mongodb_mongo_master_enterprise_rhel_80_64_bit_dynamic_required_bddc8a826383210f0a5d480ba1bb7c3f5e8c7799_21_05_19_19_37_14.tgz",
+            ToolchainInfo("GCC: (GNU) 8.3.0",
+                          pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")),
+            id="v3-gcc-8.3.0"),
+        pytest.param(
+            # pylint: disable-next=line-too-long
             "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/ubuntu1804-debug-aubsan-lite-required/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_ubuntu1804_debug_aubsan_lite_required_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
             ToolchainInfo("MongoDB clang version 7.0.1",
                           pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")),

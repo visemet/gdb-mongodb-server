@@ -101,15 +101,21 @@ class ToolchainVersionDetector:
         """Return the /opt/mongodbtoolchain/vN/share/gcc-X.Y.Z/python directory associated with a
         particular GCC compiler version.
         """
-        if gcc_version.endswith(" 8.5.0"):
+        if gcc_version.endswith((" 8.5.0", " 8.3.0", " 8.2.0")):
+            # The v3 toolchain was upgraded from GCC 8.2.0 to GCC 8.3.0 in BUILD-12151 and upgraded
+            # again from GCC 8.3.0 to GCC 8.5.0 in BUILD-12619. The gcc-8.5.0/ directory is used for
+            # binaries compiled with any of those compiler versions because we expect the machine to
+            # be running the latest version of the MongoDB toolchain, even when it is for inspecting
+            # older binaries.
             return pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")
 
         if gcc_version.endswith(" 11.2.0"):
             return pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")
 
         warnings.warn(
-            f"Unable to determine the location of the libstdc++ GDB pretty printers. Please file a"
-            f" GitHub issue and mention your compiler version was {gcc_version}")
+            "Unable to determine the location of the libstdc++ GDB pretty printers. Please file a"
+            " GitHub issue against https://github.com/visemet/gdb-mongodb-server and mention your "
+            f"compiler version was {gcc_version}")
         return None
 
     def detect(self) -> ToolchainInfo:
