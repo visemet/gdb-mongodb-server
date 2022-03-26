@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.3.0 (2022-03-26)
+------------------
+
+* Include database name in dump of DatabaseShardingState ResourceMutexes.
+
 0.2.0 (2022-03-05)
 ------------------
 

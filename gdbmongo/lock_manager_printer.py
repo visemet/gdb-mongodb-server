@@ -30,9 +30,10 @@ import typing
 import gdb
 
 from gdbmongo import stdlib_printers, stdlib_xmethods
-from gdbmongo.abseil_printers import AbslNodeHashMapPrinter
+from gdbmongo.abseil_printers import AbslFlatHashMapPrinter, AbslNodeHashMapPrinter
 from gdbmongo.decorable_printer import DecorationContainerPrinter
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
+from gdbmongo.string_data_printer import StdStringPrinter
 
 
 def gdb_lookup_value(symbol_name: str, /) -> typing.Optional[gdb.Value]:
@@ -157,6 +158,49 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
         return cls(catalog)
 
 
+# We don't have to_string() or children() defined on _DatabaseShardingStateMapPrinter right now.
+# Until we have a sense of how else we might want to use the DatabaseShardingStateMap in GDB pretty
+# printers, it is probably best to mark the type as being internal to this module.
+class _DatabaseShardingStateMapPrinter(ServiceContextDecorationMixin):
+    """Pretty-printer for mongo::DatabaseShardingStateMap."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.databases = val["_databases"]
+        self.val = val
+
+    def lookup_database_name(self, res_id: gdb.Value, /) -> typing.Optional[str]:
+        """Return a gdb.Value containing the database name of the resource."""
+        for (_, dss) in AbslFlatHashMapPrinter(self.databases).items():
+            dss = stdlib_printers.SharedPointerPrinter("std::shared_ptr", dss).pointer.dereference()
+            if dss["_stateChangeMutex"]["_rid"] == res_id:
+                return StdStringPrinter(dss["_dbName"]).string()
+
+        return None
+
+    @classmethod
+    def from_service_context(cls, service_context: gdb.Value,
+                             /) -> "_DatabaseShardingStateMapPrinter":
+        """Return a _DatabaseShardingStateMapPrinter from its decoration on ServiceContext."""
+        try:
+            # The DatabaseShardingStateMap type was introduced and added as a decoration on the
+            # ServiceContext type as part of SERVER-34431 in MongoDB 4.4. Previously in MongoDB 4.2,
+            # DatabaseShardingState was a decoration on each Database instance.
+            databases_type = gdb.lookup_type(
+                "mongo::(anonymous namespace)::DatabaseShardingStateMap")
+        except gdb.error as err:
+            if not err.args[0].startswith("No type named "):
+                raise
+
+            raise ValueError(err.args[0]) from err
+
+        iterator = DecorationContainerPrinter(service_context["_decorations"]).children()
+        for (_, decoration) in iterator:
+            if decoration.type == databases_type:
+                return cls(decoration)
+
+        raise ValueError("Failed to locate DatabaseShardingStateMap decoration in ServiceContext")
+
+
 class LockManagerPrinter(PrettyPrinterProtocol, SupportsDisplayHint, ServiceContextDecorationMixin):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::LockManager."""
@@ -274,7 +318,19 @@ class ResourceIdPrinter(SupportsToString):
             resource_labels = res_id_factory["labels"]
             xmethod_worker = stdlib_xmethods.VectorMethodsMatcher().match(
                 resource_labels.type, "at")
-            ret += f", {xmethod_worker(resource_labels, gdb.Value(self.hash_id))}"
+
+            label = StdStringPrinter(xmethod_worker(resource_labels,
+                                                    gdb.Value(self.hash_id))).string()
+            ret += f", {label}"
+
+            if "DatabaseShardingState" == label:
+                try:
+                    dss_map = _DatabaseShardingStateMapPrinter.from_global_service_context()
+                except ValueError:
+                    pass
+                else:
+                    if (db_name := dss_map.lookup_database_name(self.val)) is not None:
+                        ret += f", {db_name}"
 
         if self.resource_type in (gdb_lookup_value("mongo::RESOURCE_DATABASE"),
                                   gdb_lookup_value("mongo::RESOURCE_COLLECTION")):
