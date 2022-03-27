@@ -89,9 +89,7 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
         self.val = val
 
     def lookup_resource_name(self, res_id: gdb.Value, /) -> typing.Optional[str]:
-        """Return a gdb.Value containing the database or collection namespace string of the
-        resource.
-        """
+        """Return the database or collection namespace string of the resource."""
         iterator = stdlib_printers.StdMapPrinter("std::map", self.resources).children()
         for ((_, iter_res_id), (_, iter_nss_set)) in zip(iterator, iterator):
             if iter_res_id == res_id:
@@ -169,7 +167,7 @@ class _DatabaseShardingStateMapPrinter(ServiceContextDecorationMixin):
         self.val = val
 
     def lookup_database_name(self, res_id: gdb.Value, /) -> typing.Optional[str]:
-        """Return a gdb.Value containing the database name of the resource."""
+        """Return the database name of the resource."""
         for (_, dss) in AbslFlatHashMapPrinter(self.databases).items():
             dss = stdlib_printers.SharedPointerPrinter("std::shared_ptr", dss).pointer.dereference()
             if dss["_stateChangeMutex"]["_rid"] == res_id:
