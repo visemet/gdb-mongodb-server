@@ -116,16 +116,14 @@ class StdTuplePrinter(__PrettyPrinterProtocol):
 
 class StdStackOrQueuePrinter(__PrettyPrinterProtocol):
 
-    def __init__(self, typename: typing.Union[typing.Literal["std::stack"],
-                                              typing.Literal["std::queue"]], val: gdb.Value, /):
+    def __init__(self, typename: typing.Literal["std::stack", "std::queue"], val: gdb.Value, /):
         ...
 
 
 class StdRbtreeIteratorPrinter(__PrettyPrinterProtocol):
 
-    def __init__(self, typename: typing.Union[typing.Literal["std::map::iterator"],
-                                              typing.Literal["std::set::iterator"]], val: gdb.Value,
-                 /):
+    def __init__(self, typename: typing.Literal["std::map::iterator", "std::set::iterator"],
+                 val: gdb.Value, /):
         ...
 
 
@@ -193,16 +191,14 @@ class StdForwardListPrinter(__PrettyPrinterProtocol):
 
 class StdExpAnyPrinter(__PrettyPrinterProtocol):
 
-    def __init__(self, typename: typing.Union[typing.Literal["std::any"],
-                                              typing.Literal["std::experimental::any"]],
+    def __init__(self, typename: typing.Literal["std::any", "std::experimental::any"],
                  val: gdb.Value, /):
         ...
 
 
 class StdExpOptionalPrinter(__PrettyPrinterProtocol):
 
-    def __init__(self, typename: typing.Union[typing.Literal["std::optional"],
-                                              typing.Literal["std::experimental::optional"]],
+    def __init__(self, typename: typing.Literal["std::optional", "std::experimental::optional"],
                  val: gdb.Value, /):
         ...
 
@@ -219,18 +215,16 @@ class StdNodeHandlePrinter(__PrettyPrinterProtocol):
 
 class StdExpStringViewPrinter(__PrettyPrinterProtocol):
 
-    def __init__(self,
-                 typename: typing.Union[typing.Literal["std::basic_string_view"],
-                                        typing.Literal["std::experimental::basic_string_view"]],
+    def __init__(self, typename: typing.Literal["std::basic_string_view",
+                                                "std::experimental::basic_string_view"],
                  val: gdb.Value, /):
         ...
 
 
 class StdExpPathPrinter(__PrettyPrinterProtocol):
 
-    def __init__(self,
-                 typename: typing.Union[typing.Literal["std::filesystem::path"],
-                                        typing.Literal["std::experimental::filesystem::path"]],
+    def __init__(self, typename: typing.Literal["std::filesystem::path",
+                                                "std::experimental::filesystem::path"],
                  val: gdb.Value, /):
         ...
 

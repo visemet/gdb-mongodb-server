@@ -362,10 +362,9 @@ class AssociativeContainerSizeWorker(AssociativeContainerWorkerBase):
 
 class AssociativeContainerMethodsMatcher:
 
-    def __init__(self, name: typing.Literal["set"] | typing.Literal["map"]
-                 | typing.Literal["multiset"] | typing.Literal["multimap"]
-                 | typing.Literal["unordered_set"] | typing.Literal["unordered_map"]
-                 | typing.Literal["unordered_multiset"] | typing.Literal["unordered_multimap"], /):
+    def __init__(self, name: typing.Literal["set", "map", "multiset", "multimap", "unordered_set",
+                                            "unordered_map", "unordered_multiset",
+                                            "unordered_multimap"], /):
         ...
 
     @typing.overload
