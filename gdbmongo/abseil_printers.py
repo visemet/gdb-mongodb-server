@@ -123,7 +123,7 @@ class AbslHashMapPrinterBase(AbslPrinterProtocol):
     # pylint: disable=missing-function-docstring
     """Pretty-printer base class for absl::node_hash_map<K, V> and absl::flat_hash_map<K, V>."""
 
-    def __init__(self, val: gdb.Value) -> None:
+    def __init__(self, val: gdb.Value, /) -> None:
         self.key_type = val.type.template_argument(0)
         self.value_type = val.type.template_argument(1)
         self.size = int(val["size_"])

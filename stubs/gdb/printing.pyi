@@ -30,9 +30,7 @@ from gdb._value import Value
 class _SupportsDisplayHint(typing.Protocol):
 
     @abc.abstractmethod
-    def display_hint(
-            self
-    ) -> typing.Literal["string"] | typing.Literal["array"] | typing.Literal["map"] | None:
+    def display_hint(self) -> typing.Literal["string", "array", "map", None]:
         raise NotImplementedError
 
 
@@ -77,7 +75,7 @@ class SubPrettyPrinter:
 
 class RegexpCollectionPrettyPrinter(PrettyPrinter):
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, /) -> None:
         ...
 
     def add_printer(self, name: str, regexp: str,
@@ -93,7 +91,7 @@ class FlagEnumerationPrinter(PrettyPrinter):
 
 
 def register_pretty_printer(obj: Objfile | Progspace | None,
-                            printer: typing.Callable[[Value], _SupportsToString
-                                                     | _SupportsChildren | None],
-                            replace: bool = False) -> None:
+                            printer: typing.Callable[[Value],
+                                                     _SupportsToString | _SupportsChildren | None],
+                            /, *, replace: bool = False) -> None:
     ...

@@ -29,11 +29,11 @@ the following Python snippet:
 
     class MyPrinter:
 
-        def __init__(self, val):
+        def __init__(self, val: gdb.Value, /) -> None:
             self.val = val
             self.cursor = val["_cursor"]
 
-        def to_string(self):
+        def to_string(self) -> str:
             # The class is aliased here as a local variable for some brevity.
             UniquePointerPrinter = gdbmongo.stdlib_printers.UniquePointerPrinter
             cursor = UniquePointerPrinter("std::unique_ptr", self.cursor).pointer.dereference()

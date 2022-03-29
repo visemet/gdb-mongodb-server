@@ -29,11 +29,11 @@ the following Python snippet:
 
     class MyPrinter:
 
-        def __init__(self, val):
+        def __init__(self, val: gdb.Value, /) -> None:
             self.val = val
             self.cursor = val["_cursor"]
 
-        def to_string(self):
+        def to_string(self) -> str:
             xmethod_worker = stdlib_xmethods.UniquePtrMethodsMatcher().match(
                 self.cursor.type, "operator*")
 
