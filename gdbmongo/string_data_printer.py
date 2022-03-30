@@ -15,6 +15,7 @@
 ###
 """Pretty-printers for string-related data types."""
 
+import abc
 import typing
 
 import gdb
@@ -23,7 +24,32 @@ from gdbmongo import stdlib_printers
 from gdbmongo.printer_protocol import LazyString, SupportsDisplayHint, SupportsToString
 
 
-class StdStringPrinter(SupportsDisplayHint, SupportsToString):
+class ValueAsPythonStringMixin(SupportsToString):
+    # pylint: disable=missing-function-docstring
+    """Class to add support for converting a gdb.Value into a Python string from the to_string()
+    method of the subclass.
+
+    This class is really only appropriate to use on types which represent string data. One clue can
+    be the display_hint() method of the subclass returns "string".
+    """
+
+    @abc.abstractmethod
+    def to_string(self) -> typing.Union[str, gdb.Value, LazyString, None]:
+        raise NotImplementedError
+
+    def string(self) -> str:
+        """Return the value as a Python string."""
+        ret = self.to_string()
+        assert ret is not None
+
+        if isinstance(ret, gdb.Value):
+            return ret.string()
+        if isinstance(ret, LazyString):
+            return ret.value().string(length=ret.length)
+        return ret
+
+
+class StdStringPrinter(SupportsDisplayHint, ValueAsPythonStringMixin):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for std::string.
 
@@ -34,7 +60,7 @@ class StdStringPrinter(SupportsDisplayHint, SupportsToString):
     these issues by instead calling gdb.Value.string().
     """
 
-    def __init__(self, val: gdb.Value) -> None:
+    def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
         typ = val.type.strip_typedefs()
@@ -49,13 +75,24 @@ class StdStringPrinter(SupportsDisplayHint, SupportsToString):
     def to_string(self) -> typing.Union[str, gdb.Value, LazyString, None]:
         return self.printer.to_string()
 
-    def string(self) -> str:
-        """Return the value as a Python string."""
-        ret = self.to_string()
-        assert ret is not None
 
-        if isinstance(ret, gdb.Value):
-            return ret.string()
-        if isinstance(ret, LazyString):
-            return ret.value().string()
-        return ret
+class StringDataPrinter(SupportsDisplayHint, ValueAsPythonStringMixin):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for mongo::StringData."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+        self.size = val["_size"]
+        self.data = val["_data"]
+
+    @staticmethod
+    def display_hint() -> typing.Literal["string"]:
+        return "string"
+
+    def to_string(self) -> LazyString:
+        return self.data.lazy_string(length=int(self.size))
+
+
+def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
+    """Add the StringDataPrinter to the pretty printer collection given."""
+    pretty_printer.add_printer("mongo::StringData", "^mongo::StringData$", StringDataPrinter)
