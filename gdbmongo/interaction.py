@@ -16,13 +16,15 @@
 """Register the pretty printers defined by the gdbmongo package with GDB itself."""
 
 import re
+import typing
 import warnings
 
 import gdb
-from gdb.printing import RegexpCollectionPrettyPrinter
+import gdb.printing
 
 from gdbmongo import abseil_printers, decorable_printer, lock_manager_printer
 from gdbmongo.detect_toolchain import ToolchainVersionDetector
+from gdbmongo.printer_protocol import SupportsChildren, SupportsToString
 from gdbmongo.stdlib_printers_loader import resolve_import
 
 
@@ -39,6 +41,23 @@ def _import_libstdcxx_printers(executable: str, /, *, register_libstdcxx_printer
 
     if register_libstdcxx_printers:
         module.register_libstdcxx_printers(gdb.current_objfile())
+
+
+# pylint: disable-next=too-few-public-methods
+class RegexpCollectionPrettyPrinter(gdb.printing.RegexpCollectionPrettyPrinter):
+    """Pretty-printer collection which supports adding subprinters and recognizing gdb.Types based
+    on a regular expression. It avoids constructing an instance of the subprinter when the given
+    gdb.Value is optimized out. This enables subprinter classes to access member variables, etc. in
+    their __init__() method without worrying about raising a gdb.error as a result.
+    """
+
+    def __call__(self, val: gdb.Value, /) -> typing.Union[SupportsToString, SupportsChildren, None]:
+        if val.is_optimized_out:
+            # Attempting to pretty-print a value which is optimized out will likely result in a
+            # Python exception so we don't even bother to try.
+            return None
+
+        return super().__call__(val)
 
 
 def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: bool = False,
