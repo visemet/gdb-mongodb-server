@@ -15,13 +15,25 @@
 ###
 """https://sourceware.org/gdb/current/onlinedocs/gdb/Inferiors-In-Python.html"""
 
+import typing
+
+from _typeshed import ReadableBuffer
+
 from gdb._progspace import Progspace
+from gdb._value import Value
 
 
 class Inferior:
 
     @property
     def progspace(self) -> Progspace:
+        ...
+
+    def read_memory(self, address: int | Value, length: int | Value, /) -> memoryview:
+        ...
+
+    def search_memory(self, address: int | Value, length: int | Value, pattern: ReadableBuffer,
+                      /) -> typing.Optional[int]:
         ...
 
 

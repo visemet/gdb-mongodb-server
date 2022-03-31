@@ -17,6 +17,8 @@
 
 import typing
 
+from _typeshed import ReadableBuffer
+
 from gdb._lazy_string import LazyString
 from gdb._type import Type
 
@@ -25,7 +27,12 @@ ConstructibleFrom = bool | int | float | str | Value
 
 class Value(typing.SupportsInt, typing.SupportsFloat):
 
+    @typing.overload
     def __init__(self, val: ConstructibleFrom, /) -> None:
+        ...
+
+    @typing.overload
+    def __init__(self, buf: ReadableBuffer, typ: Type, /) -> None:
         ...
 
     def __bool__(self) -> bool:
