@@ -16,6 +16,9 @@
 """Pretty-printers for string-related data types."""
 
 import abc
+import ctypes
+import dataclasses
+import struct
 import typing
 
 import gdb
@@ -74,6 +77,58 @@ class StdStringPrinter(SupportsDisplayHint, ValueAsPythonStringMixin):
 
     def to_string(self) -> typing.Union[str, gdb.Value, LazyString, None]:
         return self.printer.to_string()
+
+
+@dataclasses.dataclass
+class MongoStringData(ctypes.Structure):
+    """Structure with a memory layout compatible with that of mongo::StringData.
+
+    This class is useful for constructing gdb.Value objects of type mongo::StringData out of
+    selected portions of a buffer read with gdb.Inferior.read_memory(). These synthetic gdb.Values
+    can then be formatted by StringDataPrinter like normal.
+
+    .. code-block:: python
+
+        objdata = gdb.selected_inferior().read_memory(self.val["_objdata"], objsize)
+        string_data = MongoStringData.from_pascalstring(self.val["_objdata"], view=objdata)
+        yield (f"{i}", string_data.to_value())
+    """
+
+    data: ctypes.c_char_p
+    size: ctypes.c_size_t
+
+    def __init__(self, *, data: int, size: int) -> None:
+        if size < 0:
+            raise ValueError("size argument must be a non-negative integer")
+
+        super().__init__(data=ctypes.c_char_p(data), size=ctypes.c_size_t(size))
+
+    @classmethod
+    def from_cstring(cls, val: gdb.Value, /, *, maxsize: int) -> "MongoStringData":
+        """Read a null-terminated string starting from the beginning of the given buffer."""
+        start = int(val)
+        size = maxsize
+
+        if (end := gdb.selected_inferior().search_memory(start, maxsize, b"\x00")) is not None:
+            size = end - start
+
+        return cls(data=start, size=size)
+
+    @classmethod
+    def from_pascalstring(cls, val: gdb.Value, /, *, view: memoryview) -> "MongoStringData":
+        """Read a length-prefixed string starting from the beginning of the given buffer."""
+        fmt = "<i"
+        (size, ) = struct.unpack_from(fmt, view)
+        return cls(data=int(val + struct.calcsize(fmt)), size=size)
+
+    def to_value(self) -> gdb.Value:
+        """Convert the structure to a gdb.Value of type mongo::StringData."""
+        typ = gdb.lookup_type("mongo::StringData")
+        return gdb.Value(memoryview(self), typ)
+
+
+setattr(MongoStringData, "_fields_",
+        [(field.name, field.type) for field in dataclasses.fields(MongoStringData)])
 
 
 class StringDataPrinter(SupportsDisplayHint, ValueAsPythonStringMixin):
