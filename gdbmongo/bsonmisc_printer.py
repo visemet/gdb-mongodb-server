@@ -26,6 +26,7 @@ import struct
 import gdb
 
 from gdbmongo.objectid_printer import MongoOID
+from gdbmongo.printer_protocol import SupportsToString
 from gdbmongo.string_data_printer import MongoStringData
 
 
@@ -212,3 +213,62 @@ class MongoBSONSymbol(ctypes.Structure):
 
 setattr(MongoBSONSymbol, "_fields_",
         [(field.name, field.type) for field in dataclasses.fields(MongoBSONSymbol)])
+
+
+# pylint: disable-next=too-few-public-methods
+class UndefinedLabelerPrinter(SupportsToString):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for literal undefined value."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+
+    def to_string(self) -> str:
+        return "undefined"
+
+
+# pylint: disable-next=too-few-public-methods
+class NullLabelerPrinter(SupportsToString):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for literal null value."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+
+    def to_string(self) -> str:
+        return "null"
+
+
+# pylint: disable-next=too-few-public-methods
+class MinKeyLabelerPrinter(SupportsToString):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for literal MinKey value."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+
+    def to_string(self) -> str:
+        return "MinKey()"
+
+
+# pylint: disable-next=too-few-public-methods
+class MaxKeyLabelerPrinter(SupportsToString):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for literal MaxKey value."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+
+    def to_string(self) -> str:
+        return "MaxKey()"
+
+
+def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
+    """Add the BSON-related printers to the pretty printer collection given."""
+    pretty_printer.add_printer("mongo::MaxKeyLabeler", "^mongo::MaxKeyLabeler$",
+                               MaxKeyLabelerPrinter)
+    pretty_printer.add_printer("mongo::MinKeyLabeler", "^mongo::MinKeyLabeler$",
+                               MinKeyLabelerPrinter)
+    pretty_printer.add_printer("mongo::NullLabeler", "^mongo::NullLabeler$", NullLabelerPrinter)
+    pretty_printer.add_printer("mongo::UndefinedLabeler", "^mongo::UndefinedLabeler$",
+                               UndefinedLabelerPrinter)
