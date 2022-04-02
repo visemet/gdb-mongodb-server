@@ -18,10 +18,17 @@
 import ctypes
 import dataclasses
 import struct
+import typing
 
 import gdb
 
+from gdbmongo.bsonmisc_printer import (MongoBSONBinData, MongoBSONCode, MongoBSONDBRef,
+                                       MongoBSONRegEx, MongoBSONSymbol)
+from gdbmongo.date_printer import MongoDateT
+from gdbmongo.lock_manager_printer import gdb_lookup_value
+from gdbmongo.objectid_printer import MongoOID
 from gdbmongo.string_data_printer import MongoStringData
+from gdbmongo.timestamp_printer import MongoTimestamp
 
 
 @dataclasses.dataclass
@@ -130,3 +137,158 @@ class MongoDecimal128(ctypes.Structure):
 
 setattr(MongoDecimal128, "_fields_",
         [(field.name, field.type) for field in dataclasses.fields(MongoDecimal128)])
+
+
+def invalid_bson(_val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Return a gdb.Value representing invalid BSON was read from the given buffer."""
+    return (gdb.Value("Invalid BSON"), len(view))
+
+
+def unpack_cstring(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a null-terminated string starting from the beginning of the given buffer."""
+    string_data = MongoStringData.from_cstring(val, maxsize=len(view))
+    return (string_data.to_value(), string_data.size.value + 1)
+
+
+def unpack_double(_val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read an 8-byte floating-point value starting from the beginning of the given buffer."""
+    fmt = "<d"
+    (ret, ) = struct.unpack_from(fmt, view)
+    return (gdb.Value(ret), struct.calcsize(fmt))
+
+
+def unpack_string(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a length-prefixed string starting from the beginning of the given buffer."""
+    string_data = MongoStringData.from_pascalstring(val, view=view)
+    return (string_data.to_value(), string_data.size.value + 4)
+
+
+def unpack_object(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a BSONObj starting from the beginning of the given buffer."""
+    (objsize, ) = struct.unpack_from("<i", view)
+    return (MongoBSONObj(objdata=int(val)).to_value(), objsize)
+
+
+def unpack_array(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a BSONArray starting from the beginning of the given buffer."""
+    (objsize, ) = struct.unpack_from("<i", view)
+    return (MongoBSONArray(objdata=int(val)).to_value(), objsize)
+
+
+def unpack_binary(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a length-prefixed blob of binary data starting from the beginning of the given
+    buffer.
+    """
+    binary_data = MongoBSONBinData.unpack_from(val, view=view)
+    return (binary_data.to_value(), binary_data.length.value + 5)
+
+
+def unpack_undefined(_val: gdb.Value, _view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Return a gdb.Value representing a literal undefined value."""
+    ret = gdb_lookup_value("mongo::BSONUndefined")
+    assert ret is not None
+    return (ret, 0)
+
+
+def unpack_object_id(_val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a 12-byte ObjectId starting from the beginning of the given buffer."""
+    object_id = MongoOID.unpack_from(view)
+    return (object_id.to_value(), 12)
+
+
+def unpack_bool(_val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a 1-byte boolean value starting from the beginning of the given buffer."""
+    fmt = "<b"
+    (ret, ) = struct.unpack_from(fmt, view)
+    return (gdb.Value(bool(ret)), struct.calcsize(fmt))
+
+
+def unpack_date(_val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read an 8-byte date starting from the beginning of the given buffer."""
+    date_t = MongoDateT.unpack_from(view)
+    return (date_t.to_value(), 8)
+
+
+def unpack_null(_val: gdb.Value, _view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Return a gdb.Value representing a literal null value."""
+    ret = gdb_lookup_value("mongo::BSONNULL")
+    assert ret is not None
+    return (ret, 0)
+
+
+def unpack_regexp(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read two null-terminated strings starting from the beginning of the given buffer."""
+    regexp = MongoBSONRegEx.unpack_from(val, view=view)
+    return (regexp.to_value(), regexp.pattern.size.value + regexp.flags.size.value + 2)
+
+
+def unpack_db_pointer(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a length-prefixed string and a 12-byte ObjectId starting from the beginning of the given
+    buffer.
+    """
+    db_pointer = MongoBSONDBRef.unpack_from(val, view=view)
+    return (db_pointer.to_value(), db_pointer.namespace.size.value + 16)
+
+
+def unpack_javascript(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a length-prefixed string from the beginning of the given buffer."""
+    javascript = MongoBSONCode.unpack_from(val, view=view)
+    return (javascript.to_value(), javascript.code.size.value + 4)
+
+
+def unpack_symbol(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a length-prefixed string from the beginning of the given buffer."""
+    symbol = MongoBSONSymbol.unpack_from(val, view=view)
+    return (symbol.to_value(), symbol.symbol.size.value + 4)
+
+
+def unpack_code_with_scope(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a length-prefixed blob of a length-prefixed string and a BSONObj from the beginning of
+    the given buffer.
+    """
+    fmt = "<i"
+    (total_size, ) = struct.unpack_from(fmt, view)
+    offset = struct.calcsize(fmt)
+    code = MongoStringData.from_pascalstring(val + offset, view=view[offset:])
+    scope = MongoBSONObj(objdata=int(val + offset + code.size.value + 4))
+    return (MongoBSONCodeWScope(code=code, scope=scope).to_value(), total_size)
+
+
+def unpack_int32(_val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a 4-byte integer value starting from the beginning of the given buffer."""
+    fmt = "<i"
+    (ret, ) = struct.unpack_from(fmt, view)
+    return (gdb.Value(ret), struct.calcsize(fmt))
+
+
+def unpack_timestamp(_val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read an 8-byte Timestamp starting from the beginning of the given buffer."""
+    timestamp = MongoTimestamp.unpack_from(view)
+    return (timestamp.to_value(), 8)
+
+
+def unpack_int64(_val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read an 8-byte integer value starting from the beginning of the given buffer."""
+    fmt = "<q"
+    (ret, ) = struct.unpack_from(fmt, view)
+    return (gdb.Value(ret), struct.calcsize(fmt))
+
+
+def unpack_decimal128(_val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Read a 16-byte Decimal128 value starting from the beginning of the given buffer."""
+    decimal_data = MongoDecimal128.unpack_from(view)
+    return (decimal_data.to_value(), 16)
+
+
+def unpack_minkey(_val: gdb.Value, _view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Return a gdb.Value representing a literal MinKey value."""
+    ret = gdb_lookup_value("mongo::MINKEY")
+    assert ret is not None
+    return (ret, 0)
+
+
+def unpack_maxkey(_val: gdb.Value, _view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
+    """Return a gdb.Value representing a literal MaxKey value."""
+    ret = gdb_lookup_value("mongo::MAXKEY")
+    assert ret is not None
+    return (ret, 0)
