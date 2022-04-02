@@ -31,6 +31,24 @@ from gdbmongo.string_data_printer import MongoStringData
 from gdbmongo.timestamp_printer import MongoTimestamp
 
 
+# pylint: disable-next=invalid-name
+# pylint: disable-next=too-few-public-methods
+class c_char_p(ctypes.c_char_p):
+    """Wrapper class for ctypes.c_char_p to avoid implicit conversion to bytes."""
+
+
+# pylint: disable-next=invalid-name
+# pylint: disable-next=too-few-public-methods
+class c_uint64(ctypes.c_uint64):
+    """Wrapper class for ctypes.c_uint64 to avoid implicit conversion to int."""
+
+
+# pylint: disable-next=invalid-name
+# pylint: disable-next=too-few-public-methods
+class c_void_p(ctypes.c_void_p):
+    """Wrapper class for ctypes.c_void_p to avoid implicit conversion to int."""
+
+
 @dataclasses.dataclass
 class MongoBSONObj(ctypes.Structure):
     # pylint: disable=missing-function-docstring
@@ -46,11 +64,11 @@ class MongoBSONObj(ctypes.Structure):
         yield (f"{i}", bsonobj.to_value())
     """
 
-    objdata: ctypes.c_char_p
-    _owned_buffer: ctypes.c_void_p
+    objdata: c_char_p
+    _owned_buffer: c_void_p
 
     def __init__(self, *, objdata: int) -> None:
-        super().__init__(objdata=ctypes.c_char_p(objdata), _owned_buffer=ctypes.c_void_p(0))
+        super().__init__(objdata=c_char_p(objdata), _owned_buffer=c_void_p(0))
 
     def to_value(self) -> gdb.Value:
         """Convert the structure to a gdb.Value of type mongo::BSONObj."""
@@ -119,15 +137,15 @@ class MongoDecimal128(ctypes.Structure):
         yield (f"{i}", decimal_data.to_value())
     """
 
-    low64: ctypes.c_uint64
-    high64: ctypes.c_uint64
+    low64: c_uint64
+    high64: c_uint64
 
     @classmethod
     def unpack_from(cls, buffer: memoryview, /) -> "MongoDecimal128":
         """Read a 16-byte Decimal128 value starting from the beginning of the given buffer."""
         fmt = "<QQ"
         (low, high) = struct.unpack_from(fmt, buffer)
-        return cls(low64=ctypes.c_uint64(low), high64=ctypes.c_uint64(high))
+        return cls(low64=c_uint64(low), high64=c_uint64(high))
 
     def to_value(self) -> gdb.Value:
         """Convert the structure to a gdb.Value of type mongo::Decimal128."""

@@ -29,6 +29,18 @@ from gdbmongo.objectid_printer import MongoOID
 from gdbmongo.string_data_printer import MongoStringData
 
 
+# pylint: disable-next=invalid-name
+# pylint: disable-next=too-few-public-methods
+class c_int32(ctypes.c_int32):
+    """Wrapper class for ctypes.c_int32 to avoid implicit conversion to int."""
+
+
+# pylint: disable-next=invalid-name
+# pylint: disable-next=too-few-public-methods
+class c_void_p(ctypes.c_void_p):
+    """Wrapper class for ctypes.c_void_p to avoid implicit conversion to int."""
+
+
 @dataclasses.dataclass
 class MongoBSONBinData(ctypes.Structure):
     """Structure with a memory layout compatible with that of mongo::BSONBinData.
@@ -43,9 +55,9 @@ class MongoBSONBinData(ctypes.Structure):
         yield (f"{i}", binary_data.to_value())
     """
 
-    data: ctypes.c_void_p
-    length: ctypes.c_int32
-    type: ctypes.c_int32
+    data: c_void_p
+    length: c_int32
+    type: c_int32
 
     @classmethod
     def unpack_from(cls, val: gdb.Value, /, *, view: memoryview) -> "MongoBSONBinData":
@@ -54,8 +66,7 @@ class MongoBSONBinData(ctypes.Structure):
         """
         fmt = "<iB"
         (length, subtype) = struct.unpack_from(fmt, view)
-        return cls(data=ctypes.c_void_p(int(val)), length=ctypes.c_int32(length),
-                   type=ctypes.c_int32(subtype))
+        return cls(data=c_void_p(int(val)), length=c_int32(length), type=c_int32(subtype))
 
     def to_value(self) -> gdb.Value:
         """Convert the structure to a gdb.Value of type mongo::BSONBinData."""

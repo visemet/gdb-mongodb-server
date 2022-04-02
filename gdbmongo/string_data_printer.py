@@ -79,6 +79,18 @@ class StdStringPrinter(SupportsDisplayHint, ValueAsPythonStringMixin):
         return self.printer.to_string()
 
 
+# pylint: disable-next=invalid-name
+# pylint: disable-next=too-few-public-methods
+class c_char_p(ctypes.c_char_p):
+    """Wrapper class for ctypes.c_char_p to avoid implicit conversion to bytes."""
+
+
+# pylint: disable-next=invalid-name
+# pylint: disable-next=too-few-public-methods
+class c_size_t(ctypes.c_size_t):
+    """Wrapper class for ctypes.c_size_t to avoid implicit conversion to int."""
+
+
 @dataclasses.dataclass
 class MongoStringData(ctypes.Structure):
     """Structure with a memory layout compatible with that of mongo::StringData.
@@ -94,14 +106,14 @@ class MongoStringData(ctypes.Structure):
         yield (f"{i}", string_data.to_value())
     """
 
-    data: ctypes.c_char_p
-    size: ctypes.c_size_t
+    data: c_char_p
+    size: c_size_t
 
     def __init__(self, *, data: int, size: int) -> None:
         if size < 0:
             raise ValueError("size argument must be a non-negative integer")
 
-        super().__init__(data=ctypes.c_char_p(data), size=ctypes.c_size_t(size))
+        super().__init__(data=c_char_p(data), size=c_size_t(size))
 
     @classmethod
     def from_cstring(cls, val: gdb.Value, /, *, maxsize: int) -> "MongoStringData":

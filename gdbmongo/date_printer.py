@@ -26,6 +26,12 @@ import gdb
 from gdbmongo.printer_protocol import PrettyPrinterProtocol
 
 
+# pylint: disable-next=invalid-name
+# pylint: disable-next=too-few-public-methods
+class c_int64(ctypes.c_int64):
+    """Wrapper class for ctypes.c_int64 to avoid implicit conversion to int."""
+
+
 @dataclasses.dataclass
 class MongoDateT(ctypes.Structure):
     """Structure with a memory layout compatible with that of mongo::Date_t.
@@ -41,14 +47,14 @@ class MongoDateT(ctypes.Structure):
         yield (f"{i}", date_t.to_value())
     """
 
-    millis: ctypes.c_int64
+    millis: c_int64
 
     @classmethod
     def unpack_from(cls, buffer: memoryview, /) -> "MongoDateT":
         """Read an 8-byte date starting from the beginning of the given buffer."""
         fmt = "<q"
         (millis, ) = struct.unpack_from(fmt, buffer)
-        return cls(millis=ctypes.c_int64(millis))
+        return cls(millis=c_int64(millis))
 
     def to_value(self) -> gdb.Value:
         """Convert the structure to a gdb.Value of type mongo::Date_t."""

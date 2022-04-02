@@ -24,6 +24,12 @@ import gdb
 from gdbmongo.printer_protocol import SupportsToString
 
 
+# pylint: disable-next=invalid-name
+# pylint: disable-next=too-few-public-methods
+class c_uint32(ctypes.c_uint32):
+    """Wrapper class for ctypes.c_uint32 to avoid implicit conversion to int."""
+
+
 @dataclasses.dataclass
 class MongoTimestamp(ctypes.Structure):
     """Structure with a memory layout compatible with that of mongo::Timestamp.
@@ -39,15 +45,15 @@ class MongoTimestamp(ctypes.Structure):
         yield (f"{i}", timestamp.to_value())
     """
 
-    i: ctypes.c_uint32
-    secs: ctypes.c_uint32
+    i: c_uint32
+    secs: c_uint32
 
     @classmethod
     def unpack_from(cls, buffer: memoryview, /) -> "MongoTimestamp":
         """Read an 8-byte Timestamp starting from the beginning of the given buffer."""
         fmt = "<II"
         (inc, seconds) = struct.unpack_from(fmt, buffer)
-        return cls(secs=ctypes.c_uint32(seconds), i=ctypes.c_uint32(inc))
+        return cls(secs=c_uint32(seconds), i=c_uint32(inc))
 
     def to_value(self) -> gdb.Value:
         """Convert the structure to a gdb.Value of type mongo::Timestamp."""
