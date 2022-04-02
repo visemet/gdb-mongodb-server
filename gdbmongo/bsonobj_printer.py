@@ -15,6 +15,7 @@
 ###
 """Pretty-printers for BSON-related data types."""
 
+import contextlib
 import ctypes
 import dataclasses
 import struct
@@ -346,13 +347,23 @@ class BSONObjPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
     empty_size = 5
     buffer_max_size = 64 * 1024 * 1024
 
+    _pooled_objdata_views: typing.ClassVar[typing.Dict[int, memoryview]] = {}
+    """Mapping from the objdata address of a BSONObj or BSONArray value to a view into the same
+    underlying buffer as another BSONObj or BSONArray. It enables nested objects and arrays to skip
+    calling gdb.selected_inferior().read_memory() themselves and instead has them rely on the same
+    blob of memory which was already retrieved from GDB for the root object or array.
+    """
+
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
+        self.objdata_val = val["_objdata"]
+        self.objdata_view = self._pooled_objdata_views.get(int(self.objdata_val))
 
         fmt = "<i"
-        (self.objsize, ) = struct.unpack(
+        (self.objsize, ) = struct.unpack_from(
             fmt,
-            gdb.selected_inferior().read_memory(self.val["_objdata"], struct.calcsize(fmt)))
+            gdb.selected_inferior().read_memory(self.objdata_val, struct.calcsize(fmt))
+            if self.objdata_view is None else self.objdata_view)
 
         self.valid = (self.empty_size <= self.objsize <= self.buffer_max_size)
 
@@ -369,12 +380,22 @@ class BSONObjPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
 
         return f"{self.short_name} of objsize {self.objsize}"
 
+    @contextlib.contextmanager
+    def _stash_subobject_view(self, address: int, view: memoryview,
+                              /) -> typing.Generator[None, None, None]:
+        self._pooled_objdata_views[address] = view
+        try:
+            yield
+        finally:
+            del self._pooled_objdata_views[address]
+
     def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
         if not self.valid:
             return
 
-        objdata_val = self.val["_objdata"]
-        objdata_view = gdb.selected_inferior().read_memory(objdata_val, self.objsize)
+        objdata_view = (gdb.selected_inferior().read_memory(self.objdata_val, self.objsize)
+                        if self.objdata_view is None else self.objdata_view)
+
         offset = 4
         i = 0
 
@@ -383,7 +404,8 @@ class BSONObjPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
             (type_byte, ) = struct.unpack_from(fmt, objdata_view, offset)
             offset += struct.calcsize(fmt)
 
-            (field_name, bytes_read) = unpack_cstring(objdata_val + offset, objdata_view[offset:])
+            (field_name, bytes_read) = unpack_cstring(self.objdata_val + offset,
+                                                      objdata_view[offset:])
             offset += bytes_read
 
             # The first element in the tuples here are technically ignored when the value is printed
@@ -392,10 +414,19 @@ class BSONObjPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
             yield (f"[{i}]", field_name)
 
             unpack = unpackers[type_byte]
-            (field_value, bytes_read) = unpack(objdata_val + offset, objdata_view[offset:])
+            subobjdata_val = self.objdata_val + offset
+            subobjdata_view = objdata_view[offset:]
+
+            (field_value, bytes_read) = unpack(subobjdata_val, subobjdata_view)
             offset += bytes_read
 
-            yield (f"[{i}]", field_value)
+            maybe_stash = (self._stash_subobject_view(int(subobjdata_val), subobjdata_view)
+                           if unpack is unpack_array or unpack is unpack_object else
+                           contextlib.nullcontext())
+
+            with maybe_stash:
+                yield (f"[{i}]", field_value)
+
             i += 1
 
 
