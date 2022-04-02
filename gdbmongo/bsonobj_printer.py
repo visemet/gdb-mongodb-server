@@ -27,6 +27,7 @@ from gdbmongo.bsonmisc_printer import (MongoBSONBinData, MongoBSONCode, MongoBSO
 from gdbmongo.date_printer import MongoDateT
 from gdbmongo.lock_manager_printer import gdb_lookup_value
 from gdbmongo.objectid_printer import MongoOID
+from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint
 from gdbmongo.string_data_printer import MongoStringData
 from gdbmongo.timestamp_printer import MongoTimestamp
 
@@ -310,3 +311,112 @@ def unpack_maxkey(_val: gdb.Value, _view: memoryview, /) -> typing.Tuple[gdb.Val
     ret = gdb_lookup_value("mongo::MAXKEY")
     assert ret is not None
     return (ret, 0)
+
+
+unpackers = [invalid_bson] * 256
+unpackers[0x01] = unpack_double
+unpackers[0x02] = unpack_string
+unpackers[0x03] = unpack_object
+unpackers[0x04] = unpack_array
+unpackers[0x05] = unpack_binary
+unpackers[0x06] = unpack_undefined
+unpackers[0x07] = unpack_object_id
+unpackers[0x08] = unpack_bool
+unpackers[0x09] = unpack_date
+unpackers[0x0A] = unpack_null
+unpackers[0x0B] = unpack_regexp
+unpackers[0x0C] = unpack_db_pointer
+unpackers[0x0D] = unpack_javascript
+unpackers[0x0E] = unpack_symbol
+unpackers[0x0F] = unpack_code_with_scope
+unpackers[0x10] = unpack_int32
+unpackers[0x11] = unpack_timestamp
+unpackers[0x12] = unpack_int64
+unpackers[0x13] = unpack_decimal128
+unpackers[0xFF] = unpack_minkey
+unpackers[0x7F] = unpack_maxkey
+
+
+class BSONObjPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for mongo::BSONObj."""
+
+    short_name = "BSONObj"
+
+    empty_size = 5
+    buffer_max_size = 64 * 1024 * 1024
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+
+        fmt = "<i"
+        (self.objsize, ) = struct.unpack(
+            fmt,
+            gdb.selected_inferior().read_memory(self.val["_objdata"], struct.calcsize(fmt)))
+
+        self.valid = (self.empty_size <= self.objsize <= self.buffer_max_size)
+
+    @staticmethod
+    def display_hint() -> typing.Literal["array", "map"]:
+        return "map"
+
+    def to_string(self) -> str:
+        if not self.valid:
+            return f"Invalid {self.short_name} of objsize {self.objsize}"
+
+        if self.objsize == self.empty_size:
+            return f"Empty {self.short_name}"
+
+        return f"{self.short_name} of objsize {self.objsize}"
+
+    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
+        if not self.valid:
+            return
+
+        objdata_val = self.val["_objdata"]
+        objdata_view = gdb.selected_inferior().read_memory(objdata_val, self.objsize)
+        offset = 4
+        i = 0
+
+        while offset < self.objsize - 1:
+            fmt = "<B"
+            (type_byte, ) = struct.unpack_from(fmt, objdata_view, offset)
+            offset += struct.calcsize(fmt)
+
+            (field_name, bytes_read) = unpack_cstring(objdata_val + offset, objdata_view[offset:])
+            offset += bytes_read
+
+            # The first element in the tuples here are technically ignored when the value is printed
+            # because we've configured a "map" display hint. Regardless, we use the same convention
+            # for them as StdMapPrinter and Tr1UnorderedMapPrinter both do.
+            yield (f"[{i}]", field_name)
+
+            unpack = unpackers[type_byte]
+            (field_value, bytes_read) = unpack(objdata_val + offset, objdata_view[offset:])
+            offset += bytes_read
+
+            yield (f"[{i}]", field_value)
+            i += 1
+
+
+class BSONArrayPrinter(BSONObjPrinter):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for mongo::BSONArray."""
+
+    short_name = "BSONArray"
+
+    @staticmethod
+    def display_hint() -> typing.Literal["array"]:
+        return "array"
+
+    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
+        iterator = super().children()
+
+        for (_, value) in zip(iterator, iterator):
+            yield value
+
+
+def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
+    """Add the BSONObj and BSONArray printers to the pretty printer collection given."""
+    pretty_printer.add_printer("mongo::BSONArray", "^mongo::BSONArray$", BSONArrayPrinter)
+    pretty_printer.add_printer("mongo::BSONObj", "^mongo::BSONObj$", BSONObjPrinter)
