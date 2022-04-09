@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.4.0 (2022-04-09)
+------------------
+
+* Support detecting libstdc++ version in MongoDB binaries back to 4.2.0 and 4.4.0.
+* Support decoding BSONObjs even when they contain dates exceeding datetime.MAXYEAR (= 9999).
+
 0.3.0 (2022-03-26)
 ------------------
 

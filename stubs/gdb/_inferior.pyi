@@ -19,6 +19,7 @@ import typing
 
 from _typeshed import ReadableBuffer
 
+from gdb._architecture import Architecture
 from gdb._progspace import Progspace
 from gdb._value import Value
 
@@ -27,6 +28,9 @@ class Inferior:
 
     @property
     def progspace(self) -> Progspace:
+        ...
+
+    def architecture(self) -> Architecture:
         ...
 
     def read_memory(self, address: int | Value, length: int | Value, /) -> memoryview:

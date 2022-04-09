@@ -17,6 +17,7 @@
 
 from gdb import events as events
 from gdb import printing as printing
+from gdb._architecture import Architecture as Architecture
 from gdb._basic import parse_and_eval as parse_and_eval
 from gdb._basic import execute as execute
 from gdb._errors import error as error

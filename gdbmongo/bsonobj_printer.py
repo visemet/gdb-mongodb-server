@@ -19,6 +19,7 @@ import contextlib
 import ctypes
 import dataclasses
 import struct
+import sys
 import typing
 
 import gdb
@@ -380,6 +381,18 @@ class BSONObjPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
 
         return f"{self.short_name} of objsize {self.objsize}"
 
+    @staticmethod
+    def _get_target_byteorder() -> typing.Literal["little", "big"]:
+        """Return the endianness of the program being debugged."""
+        # Due to https://sourceware.org/bugzilla/show_bug.cgi?id=12188 where gdb.parameter("endian")
+        # won't return the resolved endianness, we instead rely on the architecture to deduce it for
+        # our limited use case.
+        if gdb.selected_inferior().architecture().name().startswith("s390"):
+            # zSeries (aka s390x) is the only big endian architecture MongoDB tests on in Evergreen.
+            return "big"
+
+        return "little"
+
     @contextlib.contextmanager
     def _stash_subobject_view(self, address: int, view: memoryview,
                               /) -> typing.Generator[None, None, None]:
@@ -391,6 +404,15 @@ class BSONObjPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
 
     def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
         if not self.valid:
+            return
+
+        if sys.byteorder != self._get_target_byteorder():
+            # Ideally we would support cross-platform debugging between x86-64 and s390x here
+            # because the gdb binaries within the MongoDB toolchain are compiled to make this
+            # possible. However, the to_value() methods on our ctypes.Structure subclasses aren't
+            # aware of the target's endianness to swap the byte order before constructing the
+            # gdb.Value from the byte array. We return early to avoid displaying inaccurate element
+            # values for the BSONObj.
             return
 
         objdata_view = (gdb.selected_inferior().read_memory(self.objdata_val, self.objsize)
