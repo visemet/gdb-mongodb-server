@@ -24,7 +24,7 @@ import gdb.printing
 
 from gdbmongo import (abseil_printers, bsonmisc_printer, bsonobj_printer, date_printer,
                       decorable_printer, lock_manager_printer, objectid_printer,
-                      string_data_printer, timestamp_printer)
+                      string_data_printer, timestamp_printer, uuid_printer)
 from gdbmongo.detect_toolchain import ToolchainVersionDetector
 from gdbmongo.printer_protocol import SupportsChildren, SupportsToString
 from gdbmongo.stdlib_printers_loader import resolve_import
@@ -91,6 +91,7 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
         objectid_printer.add_printers(pretty_printer_mongo_extras)
         string_data_printer.add_printers(pretty_printer_mongo_extras)
         timestamp_printer.add_printers(pretty_printer_mongo_extras)
+        uuid_printer.add_printers(pretty_printer_mongo_extras)
         gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_mongo_extras)
 
     if (executable := gdb.selected_inferior().progspace.filename) is not None:

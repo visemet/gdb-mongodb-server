@@ -32,6 +32,7 @@ from gdbmongo.objectid_printer import MongoOID
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint
 from gdbmongo.string_data_printer import MongoStringData
 from gdbmongo.timestamp_printer import MongoTimestamp
+from gdbmongo.uuid_printer import MongoUUID
 
 
 # pylint: disable-next=invalid-name
@@ -201,7 +202,13 @@ def unpack_binary(val: gdb.Value, view: memoryview, /) -> typing.Tuple[gdb.Value
     buffer.
     """
     binary_data = MongoBSONBinData.unpack_from(val, view=view)
-    return (binary_data.to_value(), binary_data.length.value + 5)
+    total_size = binary_data.length.value + 5
+
+    if binary_data.type.value == 4:
+        uuid4 = MongoUUID.unpack_from(view[5:])
+        return (uuid4.to_value(), total_size)
+
+    return (binary_data.to_value(), total_size)
 
 
 def unpack_undefined(_val: gdb.Value, _view: memoryview, /) -> typing.Tuple[gdb.Value, int]:
