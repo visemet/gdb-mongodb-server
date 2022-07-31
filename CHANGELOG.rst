@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.5.0 (2022-07-31)
+------------------
+
+* Format BSON binary subtype 4 as UUID.
+* Include ErrorExtraInfo in output for Status and StatusWith<T>.
+
 0.4.0 (2022-04-09)
 ------------------
 

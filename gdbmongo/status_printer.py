@@ -98,6 +98,24 @@ class StatusPrinter(SupportsToString):
         return self.error.dereference()
 
 
+# pylint: disable-next=too-few-public-methods
+class StatusWithPrinter(SupportsToString):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for mongo::StatusWith<T>."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+        self.status = val["_status"]
+        self.opt_value = val["_t"]
+
+    def to_string(self) -> gdb.Value:
+        status = StatusPrinter(self.status)
+        if status.error != 0:
+            return self.status
+
+        return self.opt_value
+
+
 def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
     """Add the Status-related printers to the pretty printer collection given."""
     pretty_printer.add_printer("mongo::ErrorExtraInfo", "^mongo::ErrorExtraInfo$",
@@ -105,3 +123,4 @@ def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) 
     pretty_printer.add_printer("mongo::Status::ErrorInfo", "^mongo::Status::ErrorInfo$",
                                ErrorInfoPrinter)
     pretty_printer.add_printer("mongo::Status", "^mongo::Status$", StatusPrinter)
+    pretty_printer.add_printer("mongo::StatusWith", "^mongo::StatusWith<.*>$", StatusWithPrinter)
