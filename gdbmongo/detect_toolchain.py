@@ -55,9 +55,13 @@ class ToolchainVersionDetector:
         the executable.
         """
         with tempfile.NamedTemporaryFile() as output_file:
-            result = subprocess.run(
-                [cls.objcopy, "--dump-section", f".comment={str(output_file.name)}", executable],
-                capture_output=True, check=False, encoding="utf-8", text=True)
+            # objcopy overwrites the input executable when only given one positional argument.
+            # /dev/null is specified as the second positional argument to simultaneously prevent the
+            # executable file from being overwritten and to discard the generated copy.
+            result = subprocess.run([
+                cls.objcopy, "--dump-section", f".comment={str(output_file.name)}", executable,
+                "/dev/null"
+            ], capture_output=True, check=False, encoding="utf-8", text=True)
 
             if result.returncode == 0:
                 return output_file.read()

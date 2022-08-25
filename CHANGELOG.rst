@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.5.1 (2022-08-25)
+------------------
+
+* Fix detecting MongoDB toolchain from --install-action=hardlink executables.
+
 0.5.0 (2022-07-31)
 ------------------
 
