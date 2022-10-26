@@ -358,8 +358,6 @@ class ResourceTypePrinter(SupportsToString):
     # scheme for detecting which set of names to use.
     resource_type_names = (
         "Invalid",
-        "ParallelBatchWriterMode",
-        "ReplicationStateTransition",
         "Global",
         "Database",
         "Collection",
@@ -374,6 +372,27 @@ class ResourceTypePrinter(SupportsToString):
         return self.resource_type_names[int(self.val)]
 
 
+# pylint: disable-next=too-few-public-methods
+class ResourceGlobalIdPrinter(SupportsToString):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for mongo::ResourceGlobalId"""
+
+    # We duplicate the contents of mongo::ResourceGlobalIdNames[] for the same reasons described
+    # above for ResourceType
+    resource_global_id_names = (
+        "ParallelBatchWriterMode",
+        "FeatureCompatibilityVersion",
+        "ReplicationStateTransition",
+        "Global",
+    )
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+
+    def to_string(self) -> str:
+        return self.resource_global_id_names[int(self.val)]
+
+
 def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
     """Add the LockManager related printers to the pretty printer collection given."""
     pretty_printer.add_printer("mongo::LockManager", "^mongo::LockManager$", LockManagerPrinter)
@@ -381,3 +400,5 @@ def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) 
                                LockRequestListPrinter)
     pretty_printer.add_printer("mongo::ResourceType", "^mongo::ResourceType$", ResourceTypePrinter)
     pretty_printer.add_printer("mongo::ResourceId", "^mongo::ResourceId$", ResourceIdPrinter)
+    pretty_printer.add_printer("mongo::ResourceGlobalId", "^mongo::ResourceGlobalId$",
+                               ResourceGlobalIdPrinter)
