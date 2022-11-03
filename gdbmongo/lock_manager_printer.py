@@ -337,6 +337,11 @@ class ResourceIdPrinter(SupportsToString):
             if (nss := collection_catalog.lookup_resource_name(self.val)) is not None:
                 ret += f", {nss}"
 
+        if (self.resource_type == gdb_lookup_value("mongo::RESOURCE_GLOBAL")
+                and ResourceGlobalIdPrinter.is_type_defined()):
+            global_res_id = gdb.Value(self.hash_id).cast(gdb.lookup_type("mongo::ResourceGlobalId"))
+            ret += f", {global_res_id}"
+
         return ret
 
 
