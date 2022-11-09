@@ -31,7 +31,8 @@ import typing
 import gdb
 
 from gdbmongo import stdlib_printers, stdlib_xmethods
-from gdbmongo.abseil_printers import AbslFlatHashMapPrinter, AbslNodeHashMapPrinter
+from gdbmongo.abseil_printers import (AbslFlatHashMapPrinter, AbslNodeHashMapPrinter,
+                                      AbslFlatHashSetPrinter)
 from gdbmongo.decorable_printer import DecorationContainerPrinter
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
 from gdbmongo.string_data_printer import StdStringPrinter
@@ -69,6 +70,16 @@ class ServiceContextDecorationMixin(typing.Protocol):
 
 # pylint: disable-next=missing-class-docstring
 # pylint: disable-next=too-few-public-methods
+class ResourceCatalogGetter(typing.Protocol):
+
+    @abc.abstractmethod
+    def lookup_resource_name(self, res_id: gdb.Value, /) -> typing.Optional[str]:
+        """Return the database or collection namespace string of the resource."""
+        raise NotImplementedError
+
+
+# pylint: disable-next=missing-class-docstring
+# pylint: disable-next=too-few-public-methods
 class CollectionCatalogGetter(typing.Protocol):
 
     short_name: typing.ClassVar[str]
@@ -82,7 +93,7 @@ class CollectionCatalogGetter(typing.Protocol):
 # We don't have to_string() or children() defined on _CollectionCatalogPrinter right now. Until we
 # have a sense of how else we might want to use the CollectionCatalog in GDB pretty printers, it is
 # probably best to mark the type as being internal to this module.
-class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
+class _CollectionCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGetter):
     """Pretty-printer for mongo::CollectionCatalog."""
 
     def __init__(self, val: gdb.Value, /) -> None:
@@ -155,6 +166,51 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin):
                 f"Failed to locate {catalog_getter.short_name} decoration in ServiceContext")
 
         return cls(catalog)
+
+
+# We don't have to_string() or children() defined on _ResourceCatalogPrinter right now. Until we
+# have a sense of how else we might want to use the ResourceCatalog in GDB pretty printers, it is
+# probably best to mark the type as being internal to this module.
+class _ResourceCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGetter):
+    """Pretty-printer for mongo::ResourceCatalog."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.resources = val["_resources"]
+        self.val = val
+
+    def lookup_resource_name(self, res_id: gdb.Value, /) -> typing.Optional[str]:
+        """Return the database or collection namespace string of the resource."""
+        for (iter_res_id, iter_nss_set) in AbslNodeHashMapPrinter(self.resources).items():
+            if iter_res_id == res_id:
+                nss_set = iter_nss_set
+                break
+        else:
+            return None
+
+        namespaces = [nss for (_, nss) in AbslFlatHashSetPrinter(nss_set).children()]
+        return StdStringPrinter(namespaces[0]).string() if len(namespaces) == 1 else None
+
+    @classmethod
+    def from_service_context(cls, service_context: gdb.Value, /) -> "_ResourceCatalogPrinter":
+        """Return a _ResourceCatalogPrinter from its decoration on ServiceContext."""
+        try:
+            # The ResourceCatalog type was introduced and added as a decoration on the
+            # ServiceContext type as part of SERVER-67383 in MongoDB 6.2. Previously in MongoDB 6.0,
+            # the mapping of ResourceIds to collection and database names was managed through the
+            # CollectionCatalog.
+            resource_catalog_type = gdb.lookup_type("mongo::ResourceCatalog")
+        except gdb.error as err:
+            if not err.args[0].startswith("No type named "):
+                raise
+
+            raise ValueError(err.args[0]) from err
+
+        iterator = DecorationContainerPrinter(service_context["_decorations"]).children()
+        for (_, decoration) in iterator:
+            if decoration.type == resource_catalog_type:
+                return cls(decoration)
+
+        raise ValueError("Failed to locate ResourceCatalog decoration in ServiceContext")
 
 
 # We don't have to_string() or children() defined on _DatabaseShardingStateMapPrinter right now.
@@ -333,8 +389,14 @@ class ResourceIdPrinter(SupportsToString):
 
         if self.resource_type in (gdb_lookup_value("mongo::RESOURCE_DATABASE"),
                                   gdb_lookup_value("mongo::RESOURCE_COLLECTION")):
-            collection_catalog = _CollectionCatalogPrinter.from_global_service_context()
-            if (nss := collection_catalog.lookup_resource_name(self.val)) is not None:
+            catalog: ResourceCatalogGetter
+
+            try:
+                catalog = _ResourceCatalogPrinter.from_global_service_context()
+            except ValueError:
+                catalog = _CollectionCatalogPrinter.from_global_service_context()
+
+            if (nss := catalog.lookup_resource_name(self.val)) is not None:
                 ret += f", {nss}"
 
         if (self.resource_type == gdb_lookup_value("mongo::RESOURCE_GLOBAL")
