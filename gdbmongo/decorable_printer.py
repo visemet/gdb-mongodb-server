@@ -46,6 +46,10 @@ class DecorationContainerPrinter(PrettyPrinterProtocol):
     symbol_name_regexp = re.compile(r"^(.*) in ")
     type_name_regexp = re.compile(r"^(.*[\w>])([\s\*]*)$")
 
+    _cached_decorations_type: typing.ClassVar[typing.Dict[
+        str, typing.List[typing.Optional[gdb.Type]]]] = {}
+    """Mapping from the decorated type name to the list of types of its decorations."""
+
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
@@ -57,10 +61,21 @@ class DecorationContainerPrinter(PrettyPrinterProtocol):
         self.constructor_regexp = re.compile(
             fr"^void {registry_type.name}::constructAt<\s*(.*)\s*>\(void\*\)$")
 
-    def to_string(self) -> str:
+        decorated_type_name = val.type.template_argument(0).tag
+        assert decorated_type_name is not None
+        # The number of decorations for a particular decorated type is static in a MongoDB program.
+        # We preallocate the slots for the gdb.Types at DecorationContainerPrinter construction time
+        # to simplying the indexing logic later on.
+        self._decorations_type = self._cached_decorations_type.setdefault(
+            decorated_type_name, [None] * len(self))
+
+    def __len__(self) -> int:
         iterator = stdlib_printers.StdVectorPrinter("std::vector", self.decorations_info).children()
         length = int(iterator.finish - iterator.item)
-        return f"{self.val.type.name} with {stdlib_printers.num_elements(length)}"
+        return length
+
+    def to_string(self) -> str:
+        return f"{self.val.type.name} with {stdlib_printers.num_elements(len(self))}"
 
     def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
         decorations_storage = stdlib_printers.UniquePointerPrinter("std::unique_ptr",
@@ -70,8 +85,7 @@ class DecorationContainerPrinter(PrettyPrinterProtocol):
         for (index, (_, descriptor)) in enumerate(iterator):
             descriptor_offset = int(descriptor["descriptor"]["_index"])
             decoration_value = decorations_storage[descriptor_offset]
-            decoration_type = self._lookup_decoration_type(
-                self._get_decoration_type_name(descriptor), descriptor)
+            decoration_type = self._lookup_decoration_type(descriptor, index)
 
             # decoration_value.cast(decoration_type) may not be an addressable object so we get its
             # address through the unsigned char[] representation of the value.
@@ -79,7 +93,17 @@ class DecorationContainerPrinter(PrettyPrinterProtocol):
                 f"[{index}] = ({decoration_type.pointer()}) {hex(int(decoration_value.address))}",
                 decoration_value.cast(decoration_type))
 
-    def _lookup_decoration_type(self, type_name: str, descriptor: gdb.Value, /) -> gdb.Type:
+    def _lookup_decoration_type(self, descriptor: gdb.Value, index: int, /) -> gdb.Type:
+        """Return the possibly cached type of the decoration value."""
+        assert index < len(self._decorations_type)
+        if (typ := self._decorations_type[index]) is None:
+            typ = self._do_lookup_decoration_type(self._get_decoration_type_name(descriptor),
+                                                  descriptor)
+            self._decorations_type[index] = typ
+
+        return typ
+
+    def _do_lookup_decoration_type(self, type_name: str, descriptor: gdb.Value, /) -> gdb.Type:
         """Return the type of the decoration value."""
         # We cannot use gdb.lookup_type() when the decoration type is a pointer type, e.g.
         # ServiceContext::declareDecoration<VectorClock*>(). gdb.parse_and_eval() is one of the few
