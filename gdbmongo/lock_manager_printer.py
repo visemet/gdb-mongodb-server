@@ -25,6 +25,7 @@ core file can be displayed with the following commands:
 """
 
 import abc
+import functools
 import typing
 
 import gdb
@@ -336,36 +337,35 @@ class ResourceIdPrinter(SupportsToString):
             if (nss := collection_catalog.lookup_resource_name(self.val)) is not None:
                 ret += f", {nss}"
 
+        if (self.resource_type == gdb_lookup_value("mongo::RESOURCE_GLOBAL")
+                and ResourceGlobalIdPrinter.is_type_defined()):
+            global_res_id = gdb.Value(self.hash_id).cast(gdb.lookup_type("mongo::ResourceGlobalId"))
+            ret += f", {global_res_id}"
+
         return ret
 
 
 # pylint: disable-next=too-few-public-methods
 class ResourceTypePrinter(SupportsToString):
     # pylint: disable=missing-function-docstring
-    """Pretty-printer for mongo::ResourceType"""
+    """Pretty-printer for mongo::ResourceType."""
 
-    # We duplicate the contents of mongo::ResourceTypeNames[] here for a couple reasons:
-    #
-    #   1. gdb.lookup_symbol("mongo::ResourceTypeNames") would OOM the GDB process when searching
-    #      for the symbol in a dynamically-linked mongod executable.
-    #
-    #   2. While gdb.lookup_static_symbol("mongo::ResourceTypeNames").value() would avoid the memory
-    #      pressure, that function is only available starting in the v4 toolchain. Moreover, the
-    #      `const char*` values are almost surely to have been optimized out anyway.
-    #
-    # If we do end up adding a new resource type to the middle of the hierarchy in a later version
-    # of the MongoDB Server (e.g. RSTL lock in MongoDB 4.2) then we'll need to come up with some
-    # scheme for detecting which set of names to use.
-    resource_type_names = (
-        "Invalid",
-        "ParallelBatchWriterMode",
-        "ReplicationStateTransition",
-        "Global",
-        "Database",
-        "Collection",
-        "Metadata",
-        "Mutex",
-    )
+    @functools.cached_property
+    def resource_type_names(self) -> typing.Tuple[str, ...]:
+        # We duplicate the contents of mongo::ResourceTypeNames[] here for a couple reasons:
+        #
+        #   1. gdb.lookup_symbol("mongo::ResourceTypeNames") would OOM the GDB process when
+        #      searching for the symbol in a dynamically-linked mongod executable.
+        #
+        #   2. While gdb.lookup_static_symbol("mongo::ResourceTypeNames").value() would avoid the
+        #      memory pressure, that function is only available starting in the v4 toolchain.
+        #      Moreover, the `const char*` values are almost surely to have been optimized out
+        #      anyway.
+        global_resource_names = ("Global", ) if ResourceGlobalIdPrinter.is_type_defined() else (
+            "ParallelBatchWriterMode", "ReplicationStateTransition", "Global")
+
+        return (("Invalid", ) + global_resource_names +
+                ("Database", "Collection", "Metadata", "Mutex"))
 
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
@@ -374,10 +374,50 @@ class ResourceTypePrinter(SupportsToString):
         return self.resource_type_names[int(self.val)]
 
 
+class ResourceGlobalIdPrinter(SupportsToString):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for mongo::ResourceGlobalId."""
+
+    # We duplicate the contents of mongo::ResourceGlobalIdNames[] for the same reasons described
+    # above in ResourceTypePrinter.
+    resource_global_id_names = (
+        "ParallelBatchWriterMode",
+        "FeatureCompatibilityVersion",
+        "ReplicationStateTransition",
+        "Global",
+    )
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+
+    def to_string(self) -> str:
+        return self.resource_global_id_names[int(self.val)]
+
+    @staticmethod
+    def is_type_defined() -> bool:
+        """Return True if the ResourceGlobalId type is defined, and return False otherwise."""
+        try:
+            # The ResourceGlobalId type was introduced as part of SERVER-65821 in MongoDB 6.0 and
+            # then subsequently backported to 4.4.15 and 5.0.10. resourceIdParallelBatchWriterMode
+            # and resourceIdReplicationStateTransitionLock, along with a new
+            # resourceIdFeatureCompatibilityVersion, all became distinct resources under the
+            # RESOURCE_GLOBAL ResourceType. The top-level RESOURCE_PBWM and RESOURCE_RSTL
+            # ResourceTypes were removed.
+            gdb.lookup_type("mongo::ResourceGlobalId")
+            return True
+        except gdb.error as err:
+            if not err.args[0].startswith("No type named "):
+                raise
+
+            return False
+
+
 def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
     """Add the LockManager related printers to the pretty printer collection given."""
     pretty_printer.add_printer("mongo::LockManager", "^mongo::LockManager$", LockManagerPrinter)
     pretty_printer.add_printer("mongo::LockRequestList", "^mongo::LockRequestList$",
                                LockRequestListPrinter)
-    pretty_printer.add_printer("mongo::ResourceType", "^mongo::ResourceType$", ResourceTypePrinter)
     pretty_printer.add_printer("mongo::ResourceId", "^mongo::ResourceId$", ResourceIdPrinter)
+    pretty_printer.add_printer("mongo::ResourceType", "^mongo::ResourceType$", ResourceTypePrinter)
+    pretty_printer.add_printer("mongo::ResourceGlobalId", "^mongo::ResourceGlobalId$",
+                               ResourceGlobalIdPrinter)
