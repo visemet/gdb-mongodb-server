@@ -379,6 +379,12 @@ class ResourceIdPrinter(SupportsToString):
             ret += f", {label}"
 
             if "DatabaseShardingState" == label:
+                # The label for the DatabaseShardingState's ResourceMutex was changed as part of
+                # SERVER-70610 in MongoDB 6.2 where it now embeds the database name in the label.
+                # Previously in MongoDB 6.0, the labels for all DatabaseShardingStates'
+                # ResourceMutexes were the same generic "DatabaseShardingState" string and meant
+                # consulting the DatabaseShardingStateMap was the only way to know which
+                # ResourceMutex corresponded to which DatabaseShardingState.
                 try:
                     dss_map = _DatabaseShardingStateMapPrinter.from_global_service_context()
                 except ValueError:
