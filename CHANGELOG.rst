@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.6.0 (2022-11-18)
+------------------
+
+* Support dumping LockManager from core dump of MongoDB 6.2.
+* Fix resource type names in output of MongoDB 4.4.15, 5.0.10, and 6.0.0.
+
 0.5.1 (2022-08-25)
 ------------------
 
