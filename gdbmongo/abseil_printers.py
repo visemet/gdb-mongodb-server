@@ -34,6 +34,9 @@ def gdb_resolve_type(typ: gdb.Type, /) -> gdb.Type:
     while typ.code in (gdb.TYPE_CODE_PTR, gdb.TYPE_CODE_REF):
         typ = typ.target().strip_typedefs()
 
+    if typ.code == gdb.TYPE_CODE_FUNC:
+        return typ
+
     typename = typ.tag if typ.tag is not None else typ.name
     assert typename is not None
     return gdb.lookup_type(typename)
