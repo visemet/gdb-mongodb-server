@@ -42,7 +42,7 @@ def unload_libstdcxx_printers() -> typing.Generator[None, None, None]:
         id="v3/gcc-8.5.0"),
     pytest.param(
         ToolchainInfo("GCC: (GNU) 11.2.0",
-                      pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")),
+                      pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
         id="v4/gcc-11.2.0"),
 ))
 @pytest.mark.usefixtures("unload_libstdcxx_printers")

@@ -113,8 +113,13 @@ class ToolchainVersionDetector:
             # older binaries.
             return pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")
 
-        if gcc_version.endswith(" 11.2.0"):
-            return pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")
+        if gcc_version.endswith((" 11.2.0", " 11.3.0")):
+            # The v4 toolchain was upgraded from GCC 11.2.0 to GCC 11.3.0 in BUILD-14919 prior to
+            # the official v4 toolchain rollout. The gcc-11.3.0/ directory is used for binaries
+            # compiled with any of those compiler versions because we expect the machine to be
+            # running the latest version of the MongoDB toolchain, even when it is for inspecting
+            # older binaries.
+            return pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")
 
         warnings.warn(
             "Unable to determine the location of the libstdc++ GDB pretty printers. Please file a"

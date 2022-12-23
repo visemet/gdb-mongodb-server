@@ -97,15 +97,21 @@ def test_parse_clang_version(raw_elf_section: bytes, expected: typing.Optional[s
             id="v3-clang"),
         pytest.param(
             # pylint: disable-next=line-too-long
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/linux-x86-dynamic-compile-required/mongodb_mongo_master_f0f7dc308e33394912e63a57f65964d9fc7ee911/binaries/mongo-50640.tgz",
+            ToolchainInfo("GCC: (GNU) 11.3.0",
+                          pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
+            id="v4-gcc"),
+        pytest.param(
+            # pylint: disable-next=line-too-long
             "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel80-dynamic-v4gcc-debug-experimental/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_enterprise_rhel80_dynamic_v4gcc_debug_experimental_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
             ToolchainInfo("GCC: (GNU) 11.2.0",
-                          pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")),
-            id="v4-gcc"),
+                          pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
+            id="v4-gcc-11.2.0"),
         pytest.param(
             # pylint: disable-next=line-too-long
             "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel80-dynamic-v4clang-debug-experimental/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_enterprise_rhel80_dynamic_v4clang_debug_experimental_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
             ToolchainInfo("MongoDB clang version 12.0.1",
-                          pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")),
+                          pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
             id="v4-clang"),
     ))
 def test_detected_toolchain_from_real_executable(url: str, expected: ToolchainInfo) -> None:
