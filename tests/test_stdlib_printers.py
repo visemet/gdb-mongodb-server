@@ -35,6 +35,26 @@ def unload_libstdcxx_printers() -> typing.Generator[None, None, None]:
     sys.modules.pop("gdb.libstdcxx.v6.printers", None)
 
 
+@pytest.mark.parametrize(("toolchain_info", ), (
+    pytest.param(
+        ToolchainInfo("GCC: (GNU) 8.5.0",
+                      pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")),
+        id="v3/gcc-8.5.0"),
+    pytest.param(
+        ToolchainInfo("GCC: (GNU) 11.2.0",
+                      pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")),
+        id="v4/gcc-11.2.0"),
+))
+@pytest.mark.usefixtures("unload_libstdcxx_printers")
+@unittest.mock.patch.dict("sys.modules", gdb=unittest.mock.MagicMock())
+def test_can_load_module_from_toolchain(toolchain_info: ToolchainInfo) -> None:
+    """Check that the gdb.libstdcxx.v6 package can be loaded without error for the corresponding
+    version of the MongoDB toolchain.
+    """
+    (module, _register_module) = resolve_import(toolchain_info)
+    assert module.register_libstdcxx_printers is not None
+
+
 @pytest.mark.usefixtures("unload_libstdcxx_printers")
 @unittest.mock.patch.dict("sys.modules", gdb=unittest.mock.MagicMock())
 class TestStdlibPrinters:
@@ -42,24 +62,6 @@ class TestStdlibPrinters:
 
     toolchain_info = ToolchainInfo("GCC: (GNU) 8.5.0",
                                    pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python"))
-
-    @pytest.mark.parametrize(("toolchain_info", ), (
-        pytest.param(
-            ToolchainInfo("GCC: (GNU) 8.5.0",
-                          pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")),
-            id="v3/gcc-8.5.0"),
-        pytest.param(
-            ToolchainInfo("GCC: (GNU) 11.2.0",
-                          pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.2.0/python")),
-            id="v4/gcc-11.2.0"),
-    ))
-    @staticmethod
-    def test_can_load_module_from_toolchain(toolchain_info: ToolchainInfo) -> None:
-        """Check that the gdb.libstdcxx.v6 package can be loaded without error for the corresponding
-        version of the MongoDB toolchain.
-        """
-        (module, _register_module) = resolve_import(toolchain_info)
-        assert module.register_libstdcxx_printers is not None
 
     def test_no_side_effects_from_loading_module(self) -> None:
         """Check that calling resolve_import() won't modify sys.modules automatically."""
