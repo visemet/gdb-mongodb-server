@@ -60,10 +60,6 @@ class UniquePointerPrinter(__PrettyPrinterProtocol):
     def __init__(self, typename: typing.Literal["std::unique_ptr"], val: gdb.Value, /):
         ...
 
-    @property
-    def pointer(self) -> gdb.Value:
-        ...
-
 
 class StdListPrinter(__PrettyPrinterProtocol):
 

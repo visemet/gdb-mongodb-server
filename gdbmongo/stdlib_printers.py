@@ -35,8 +35,8 @@ the following Python snippet:
 
         def to_string(self) -> str:
             # The class is aliased here as a local variable for some brevity.
-            UniquePointerPrinter = gdbmongo.stdlib_printers.UniquePointerPrinter
-            cursor = UniquePointerPrinter("std::unique_ptr", self.cursor).pointer.dereference()
+            SharedPointerPrinter = gdbmongo.stdlib_printers.SharedPointerPrinter
+            cursor = SharedPointerPrinter("std::shared_ptr", self.cursor).pointer.dereference()
             ...
 """
 
