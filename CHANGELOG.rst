@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.7.0 (2022-12-24)
+------------------
+
+* Support binaries built with MongoDB v4 toolchain.
+
 0.6.0 (2022-11-18)
 ------------------
 

@@ -262,8 +262,14 @@ class LockManagerPrinter(PrettyPrinterProtocol, SupportsDisplayHint, ServiceCont
 
     def __init__(self, val: gdb.Value, /) -> None:
         self.buckets = val["_lockBuckets"]
-        self.num_buckets = int(val["_numLockBuckets"])
         self.val = val
+
+        # Static member variables are not always accessible within GDB from the instance value
+        # itself. We look up the fully qualified symbol rather than writing `val["_numLockBuckets"]`
+        # here to work around this limitation.
+        num_buckets = gdb_lookup_value("mongo::LockManager::_numLockBuckets")
+        assert num_buckets is not None
+        self.num_buckets = int(num_buckets)
 
     @staticmethod
     def display_hint() -> typing.Literal["map"]:
