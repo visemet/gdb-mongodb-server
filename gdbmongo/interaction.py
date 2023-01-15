@@ -69,31 +69,30 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
     The pretty printer collections other than gdbmongo-essentials are defaulted to off to avoid
     conflicting with the pretty printers defined in the mongodb/mongo repository.
     """
-    if essentials:
-        # It would be weird to not register these pretty printers given the whole purpose of the
-        # gdbmongo package, but a user can always choose to disable them explicitly so we may as
-        # well offer the option for consistency with the others.
-        pretty_printer_essentials = RegexpCollectionPrettyPrinter("gdbmongo-essentials")
-        lock_manager_printer.add_printers(pretty_printer_essentials)
-        gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_essentials)
+    # pylint: disable=attribute-defined-outside-init
+    # Maybe https://github.com/PyCQA/pylint/issues/4987 would help.
+    pretty_printer_essentials = RegexpCollectionPrettyPrinter("gdbmongo-essentials")
+    pretty_printer_essentials.enabled = essentials
+    lock_manager_printer.add_printers(pretty_printer_essentials)
+    gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_essentials)
 
-    if abseil:
-        pretty_printer_abseil = RegexpCollectionPrettyPrinter("gdbmongo-absl")
-        abseil_printers.add_printers(pretty_printer_abseil)
-        gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_abseil)
+    pretty_printer_abseil = RegexpCollectionPrettyPrinter("gdbmongo-absl")
+    pretty_printer_abseil.enabled = abseil
+    abseil_printers.add_printers(pretty_printer_abseil)
+    gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_abseil)
 
-    if mongo_extras:
-        pretty_printer_mongo_extras = RegexpCollectionPrettyPrinter("gdbmongo-mongo-extras")
-        bsonmisc_printer.add_printers(pretty_printer_mongo_extras)
-        bsonobj_printer.add_printers(pretty_printer_mongo_extras)
-        date_printer.add_printers(pretty_printer_mongo_extras)
-        decorable_printer.add_printers(pretty_printer_mongo_extras)
-        objectid_printer.add_printers(pretty_printer_mongo_extras)
-        status_printer.add_printers(pretty_printer_mongo_extras)
-        string_data_printer.add_printers(pretty_printer_mongo_extras)
-        timestamp_printer.add_printers(pretty_printer_mongo_extras)
-        uuid_printer.add_printers(pretty_printer_mongo_extras)
-        gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_mongo_extras)
+    pretty_printer_mongo_extras = RegexpCollectionPrettyPrinter("gdbmongo-mongo-extras")
+    pretty_printer_mongo_extras.enabled = mongo_extras
+    bsonmisc_printer.add_printers(pretty_printer_mongo_extras)
+    bsonobj_printer.add_printers(pretty_printer_mongo_extras)
+    date_printer.add_printers(pretty_printer_mongo_extras)
+    decorable_printer.add_printers(pretty_printer_mongo_extras)
+    objectid_printer.add_printers(pretty_printer_mongo_extras)
+    status_printer.add_printers(pretty_printer_mongo_extras)
+    string_data_printer.add_printers(pretty_printer_mongo_extras)
+    timestamp_printer.add_printers(pretty_printer_mongo_extras)
+    uuid_printer.add_printers(pretty_printer_mongo_extras)
+    gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_mongo_extras)
 
     if (executable := gdb.selected_inferior().progspace.filename) is not None:
         _import_libstdcxx_printers(executable, register_libstdcxx_printers=stdlib)
