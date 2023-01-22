@@ -76,7 +76,7 @@ of the other printers defined by the *gdbmongo* package.
 
 .. pull-quote::
 
-    register_printers(\*, essentials=True, stdlib=False, abseil=False, mongo_extras=False)
+    register_printers(\*, essentials=True, stdlib=False, abseil=False, boost=False, mongo_extras=False)
         Register the pretty printers defined by the gdbmongo package with GDB itself.
 
         The pretty printer collections other than gdbmongo-essentials are defaulted to off to avoid

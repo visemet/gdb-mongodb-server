@@ -22,9 +22,9 @@ import warnings
 import gdb
 import gdb.printing
 
-from gdbmongo import (abseil_printers, bsonmisc_printer, bsonobj_printer, date_printer,
-                      decorable_printer, lock_manager_printer, objectid_printer, status_printer,
-                      string_data_printer, timestamp_printer, uuid_printer)
+from gdbmongo import (abseil_printers, boost_printers, bsonmisc_printer, bsonobj_printer,
+                      date_printer, decorable_printer, lock_manager_printer, objectid_printer,
+                      status_printer, string_data_printer, timestamp_printer, uuid_printer)
 from gdbmongo.detect_toolchain import ToolchainVersionDetector
 from gdbmongo.printer_protocol import SupportsChildren, SupportsToString
 from gdbmongo.stdlib_printers_loader import resolve_import
@@ -63,7 +63,7 @@ class RegexpCollectionPrettyPrinter(gdb.printing.RegexpCollectionPrettyPrinter):
 
 
 def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: bool = False,
-                      mongo_extras: bool = False) -> None:
+                      boost: bool = False, mongo_extras: bool = False) -> None:
     """Register the pretty printers defined by the gdbmongo package with GDB itself.
 
     The pretty printer collections other than gdbmongo-essentials are defaulted to off to avoid
@@ -80,6 +80,11 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
     pretty_printer_abseil.enabled = abseil
     abseil_printers.add_printers(pretty_printer_abseil)
     gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_abseil)
+
+    pretty_printer_boost = RegexpCollectionPrettyPrinter("gdbmongo-boost")
+    pretty_printer_boost.enabled = boost
+    boost_printers.add_printers(pretty_printer_boost)
+    gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_boost)
 
     pretty_printer_mongo_extras = RegexpCollectionPrettyPrinter("gdbmongo-mongo-extras")
     pretty_printer_mongo_extras.enabled = mongo_extras
