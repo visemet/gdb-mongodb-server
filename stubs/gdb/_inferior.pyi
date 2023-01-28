@@ -20,6 +20,7 @@ import typing
 from _typeshed import ReadableBuffer
 
 from gdb._architecture import Architecture
+from gdb._inferiorthread import InferiorThread
 from gdb._progspace import Progspace
 from gdb._value import Value
 
@@ -28,6 +29,9 @@ class Inferior:
 
     @property
     def progspace(self) -> Progspace:
+        ...
+
+    def threads(self) -> typing.Tuple[InferiorThread, ...]:
         ...
 
     def architecture(self) -> Architecture:

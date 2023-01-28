@@ -25,6 +25,8 @@ from gdb._errors import MemoryError as MemoryError
 from gdb._errors import GdbError as GdbError
 from gdb._inferior import Inferior as Inferior
 from gdb._inferior import selected_inferior as selected_inferior
+from gdb._inferiorthread import InferiorThread as InferiorThread
+from gdb._inferiorthread import selected_thread as selected_thread
 from gdb._objfile import Objfile as Objfile
 from gdb._objfile import current_objfile as current_objfile
 from gdb._progspace import Progspace as Progspace
