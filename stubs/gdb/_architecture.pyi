@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###
-"""https://sourceware.org/gdb/current/onlinedocs/gdb/Architectures-In-Python.html"""
+"""https://sourceware.org/gdb/onlinedocs/gdb/Architectures-In-Python.html"""
 
 
 class Architecture:

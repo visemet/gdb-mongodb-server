@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###
-"""https://sourceware.org/gdb/current/onlinedocs/gdb/Inferiors-In-Python.html"""
+"""https://sourceware.org/gdb/onlinedocs/gdb/Inferiors-In-Python.html"""
 
 import typing
 
