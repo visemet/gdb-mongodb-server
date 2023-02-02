@@ -24,7 +24,8 @@ import gdb.printing
 
 from gdbmongo import (abseil_printers, boost_printers, bsonmisc_printer, bsonobj_printer,
                       date_printer, decorable_printer, lock_manager_printer, objectid_printer,
-                      status_printer, string_data_printer, timestamp_printer, uuid_printer)
+                      status_printer, string_data_printer, thread_name_printer, timestamp_printer,
+                      uuid_printer)
 from gdbmongo.detect_toolchain import ToolchainVersionDetector
 from gdbmongo.printer_protocol import SupportsChildren, SupportsToString
 from gdbmongo.stdlib_printers_loader import resolve_import
@@ -43,6 +44,25 @@ def _import_libstdcxx_printers(executable: str, /, *, register_libstdcxx_printer
 
     if register_libstdcxx_printers:
         module.register_libstdcxx_printers(gdb.current_objfile())
+
+
+def _set_thread_names() -> None:
+    """Update the name of each thread as viewed by GDB based on the contents of the
+    mongo::(anonymous namespace):ThreadNameInfo thread-local variable.
+    """
+    original_thread = gdb.selected_thread()
+    original_frame = gdb.selected_frame()
+
+    try:
+        for thread in gdb.selected_inferior().threads():
+            thread.switch()
+            if thread_name := thread_name_printer.get_thread_name():
+                thread.name = thread_name
+    finally:
+        if original_thread.is_valid():
+            original_thread.switch()
+            if original_frame.is_valid():
+                original_frame.select()
 
 
 # pylint: disable-next=too-few-public-methods
@@ -99,14 +119,43 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
     uuid_printer.add_printers(pretty_printer_mongo_extras)
     gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_mongo_extras)
 
-    if (executable := gdb.selected_inferior().progspace.filename) is not None:
+    def initialize_environment(executable: str, /) -> None:
         _import_libstdcxx_printers(executable, register_libstdcxx_printers=stdlib)
+        _set_thread_names()
+
+    if (executable := gdb.selected_inferior().progspace.filename) is not None:
+        initialize_environment(executable)
     else:
 
-        def on_user_at_prompt() -> None:
-            """Import the libstdc++ GDB pretty printers when either the `attach <pid>` or
-            `core-file <pathname>` commands are run in GDB.
+        def on_attach_first_stop(event: gdb.StopEvent) -> None:
+            """Import the libstdc++ GDB pretty printers following the `attach <pid>` command being
+            run in GDB.
             """
+            gdb.events.stop.disconnect(on_attach_first_stop)
+
+            # We only intend to handle the stop event when first attaching to a program. Signals and
+            # breakpoints also trigger "normal stop" events but they are reported as subclasses of
+            # gdb.StopEvent and so we return early for any derived types.
+            #
+            # pylint: disable-next=unidiomatic-typecheck
+            if type(event) is not gdb.StopEvent:
+                return
+
+            if (executable := gdb.selected_inferior().progspace.filename) is None:
+                return
+
+            # Call disconnect() as soon as we have an executable file because we only want to
+            # trigger the import once.
+            gdb.events.before_prompt.disconnect(on_user_at_prompt)
+
+            initialize_environment(executable)
+
+        def on_user_at_prompt() -> None:
+            """Import the libstdc++ GDB pretty printers after either the `attach <pid>` or
+            `core-file <pathname>` commands were run in GDB and control has returned to the user.
+            """
+            gdb.events.stop.disconnect(on_attach_first_stop)
+
             if (executable := gdb.selected_inferior().progspace.filename) is None:
                 # The `attach` command would have filled in the filename so we only need to check if
                 # a core dump has been loaded with the executable file also being loaded.
@@ -122,6 +171,7 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
             # trigger the import once.
             gdb.events.before_prompt.disconnect(on_user_at_prompt)
 
-            _import_libstdcxx_printers(executable, register_libstdcxx_printers=stdlib)
+            initialize_environment(executable)
 
+        gdb.events.stop.connect(on_attach_first_stop)
         gdb.events.before_prompt.connect(on_user_at_prompt)

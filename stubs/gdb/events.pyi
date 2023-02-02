@@ -30,3 +30,10 @@ class EventRegistry(typing.Generic[NotifyFunc]):
 
 
 before_prompt: EventRegistry[typing.Callable[[], None]]
+
+
+class StopEvent:
+    pass
+
+
+stop: EventRegistry[typing.Callable[[StopEvent], None]]

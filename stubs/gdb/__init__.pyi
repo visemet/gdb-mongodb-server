@@ -23,6 +23,7 @@ from gdb._basic import execute as execute
 from gdb._errors import error as error
 from gdb._errors import MemoryError as MemoryError
 from gdb._errors import GdbError as GdbError
+from gdb.events import StopEvent as StopEvent
 from gdb._frame import Frame as Frame
 from gdb._frame import newest_frame as newest_frame
 from gdb._frame import selected_frame as selected_frame
