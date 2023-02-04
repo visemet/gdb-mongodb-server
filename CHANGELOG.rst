@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.8.0 (2023-02-04)
+------------------
+
+* Always register gdbmongo pretty printers with GDB itself but continue defaulting them to off.
+* Support displaying thread names in core dump of MongoDB 6.2.
+
 0.7.0 (2022-12-24)
 ------------------
 

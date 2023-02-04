@@ -34,8 +34,19 @@ def get_thread_name() -> str:
     mongo::(anonymous namespace)::ThreadNameInfo is therefore the only memory location where the
     thread's name is recorded in a core dump.
     """
-    thread_info = gdb.parse_and_eval(
-        "&'mongo::(anonymous namespace)::ThreadNameInfo::forThisThread()::tls'").dereference()
+    try:
+        # The `tls` thread-local variable was introduced to the ThreadNameInfo::forThisThread()
+        # static function as part of SERVER-66385 in MongoDB 6.1. Previously in MongoDB 6.0, the
+        # thread name was stored as a decoration within the ThreadContext object.
+        thread_info = gdb.parse_and_eval(
+            "&'mongo::(anonymous namespace)::ThreadNameInfo::forThisThread()::tls'").dereference()
+    except gdb.error as err:
+        if not err.args[0].startswith("No symbol "):
+            raise
+
+        # Supporting older versions will also need to consider the changes from SERVER-52821 and
+        # SERVER-63852.
+        return ""
 
     # The 'mongo::(anonymous namespace)::ThreadNameInfo::forThisThread():Tls' struct has a trivial
     # definition and its typeinfo can be elided.
