@@ -79,37 +79,36 @@ def test_parse_clang_version(raw_elf_section: bytes, expected: typing.Optional[s
     (
         pytest.param(
             # pylint: disable-next=line-too-long
-            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/ubuntu1804-debug-suggested/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_ubuntu1804_debug_suggested_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-v6.0/enterprise-rhel-80-64-bit-dynamic-required/f5a7a112ba9eccd1a8cc0bd10421e6bd17a86761/binaries/mongo-mongodb_mongo_v6.0_enterprise_rhel_80_64_bit_dynamic_required_f5a7a112ba9eccd1a8cc0bd10421e6bd17a86761_23_02_23_23_15_16.tgz",
             ToolchainInfo("GCC: (GNU) 8.5.0",
                           pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")),
             id="v3-gcc"),
         pytest.param(
-            # pylint: disable-next=line-too-long
             "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel80-4.4.6.tgz",
             ToolchainInfo("GCC: (GNU) 8.3.0",
                           pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")),
             id="v3-gcc-8.3.0"),
         pytest.param(
             # pylint: disable-next=line-too-long
-            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/ubuntu1804-debug-aubsan-lite-required/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_ubuntu1804_debug_aubsan_lite_required_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-v6.0/ubuntu1804-debug-aubsan-lite-required/f5a7a112ba9eccd1a8cc0bd10421e6bd17a86761/binaries/mongo-mongodb_mongo_v6.0_ubuntu1804_debug_aubsan_lite_required_f5a7a112ba9eccd1a8cc0bd10421e6bd17a86761_23_02_23_23_15_16.tgz",
             ToolchainInfo("MongoDB clang version 7.0.1",
                           pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")),
             id="v3-clang"),
         pytest.param(
             # pylint: disable-next=line-too-long
-            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/linux-x86-dynamic-compile-required/mongodb_mongo_master_f0f7dc308e33394912e63a57f65964d9fc7ee911/binaries/mongo-50640.tgz",
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/linux-x86-dynamic-compile-required/mongodb_mongo_master_71f90697444a61f9023c205d8df945d26dd033b7/binaries/mongo-52015.tgz",
             ToolchainInfo("GCC: (GNU) 11.3.0",
                           pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
             id="v4-gcc"),
         pytest.param(
             # pylint: disable-next=line-too-long
-            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel80-dynamic-v4gcc-debug-experimental/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_enterprise_rhel80_dynamic_v4gcc_debug_experimental_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel80-dynamic-v4gcc-debug-experimental/mongodb_mongo_master_4db2628c4897f7fc2fa2e7e2555008f7cbc8752f/binaries/mongo-49559.tgz",
             ToolchainInfo("GCC: (GNU) 11.2.0",
                           pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
             id="v4-gcc-11.2.0"),
         pytest.param(
             # pylint: disable-next=line-too-long
-            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel80-dynamic-v4clang-debug-experimental/125deb74c63c74f46b0c53f49d3b229592b510bb/binaries/mongo-mongodb_mongo_master_enterprise_rhel80_dynamic_v4clang_debug_experimental_125deb74c63c74f46b0c53f49d3b229592b510bb_22_02_20_01_54_48.tgz",
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel80-dynamic-clang-cxx20-debug-experimental/mongodb_mongo_master_71f90697444a61f9023c205d8df945d26dd033b7/binaries/mongo-52015.tgz",
             ToolchainInfo("MongoDB clang version 12.0.1",
                           pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
             id="v4-clang"),
