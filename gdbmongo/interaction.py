@@ -46,15 +46,16 @@ def _import_libstdcxx_printers(executable: str, /, *, register_libstdcxx_printer
         module.register_libstdcxx_printers(gdb.current_objfile())
 
 
-def _set_thread_names() -> None:
+def _set_thread_names(all_threads: typing.Tuple[gdb.InferiorThread, ...], /) -> None:
     """Update the name of each thread as viewed by GDB based on the contents of the
-    mongo::(anonymous namespace):ThreadNameInfo thread-local variable.
+    mongo::(anonymous namespace)::ThreadNameInfo thread-local variable.
     """
+    assert all_threads, "No threads. Is a program running? Is a core dump loaded?"
     original_thread = gdb.selected_thread()
     original_frame = gdb.selected_frame()
 
     try:
-        for thread in gdb.selected_inferior().threads():
+        for thread in all_threads:
             thread.switch()
             if thread_name := thread_name_printer.get_thread_name():
                 thread.name = thread_name
@@ -121,7 +122,9 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
 
     def initialize_environment(executable: str, /) -> None:
         _import_libstdcxx_printers(executable, register_libstdcxx_printers=stdlib)
-        _set_thread_names()
+
+        if all_threads := gdb.selected_inferior().threads():
+            _set_thread_names(all_threads)
 
     # pylint: disable-next=dangerous-default-value
     def ensure_disconnected_on_attach_first_stop(cell: list[bool] = [False], /) -> None:
