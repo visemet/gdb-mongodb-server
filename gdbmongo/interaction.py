@@ -123,6 +123,12 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
         _import_libstdcxx_printers(executable, register_libstdcxx_printers=stdlib)
         _set_thread_names()
 
+    # pylint: disable-next=dangerous-default-value
+    def ensure_disconnected_on_attach_first_stop(cell: list[bool] = [False], /) -> None:
+        ([was_called], cell[:]) = (cell, [True])
+        if not was_called:
+            gdb.events.stop.disconnect(on_attach_first_stop)
+
     if (executable := gdb.selected_inferior().progspace.filename) is not None:
         initialize_environment(executable)
     else:
@@ -154,7 +160,7 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
             """Import the libstdc++ GDB pretty printers after either the `attach <pid>` or
             `core-file <pathname>` commands were run in GDB and control has returned to the user.
             """
-            gdb.events.stop.disconnect(on_attach_first_stop)
+            ensure_disconnected_on_attach_first_stop()
 
             if (executable := gdb.selected_inferior().progspace.filename) is None:
                 # The `attach` command would have filled in the filename so we only need to check if
