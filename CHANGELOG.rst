@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.8.1 (2023-03-04)
+------------------
+
+* Fix two Python exceptions from thread names logic when no program or core dump was loaded.
+* Fix boost::optional pretty printer for scalar types.
+
 0.8.0 (2023-02-04)
 ------------------
 
