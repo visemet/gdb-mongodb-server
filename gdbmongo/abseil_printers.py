@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###
-"""Pretty printers for absl:: container types."""
+"""Pretty-printers for absl:: container types."""
 
 import typing
 
@@ -52,8 +52,8 @@ def AbslHashContainerIterator(container: gdb.Value, /) -> typing.Iterator[gdb.Va
     slots = container["slots_"]
 
     # We search for any in-use `slots_` among the `ctrl_` bytes and return them.
-    # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/internal/raw_hash_set.h#L1817-L1820
-    # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/internal/raw_hash_set.h#L315
+    # https://github.com/mongodb/mongo/blob/r7.0.0/src/third_party/abseil-cpp/dist/absl/container/internal/raw_hash_set.h#L1948-L1951
+    # https://github.com/mongodb/mongo/blob/r7.0.0/src/third_party/abseil-cpp/dist/absl/container/internal/raw_hash_set.h#L330
     for i in range(capacity):
         is_full = int(ctrl[i]) >= 0
         if is_full:
@@ -104,10 +104,10 @@ class AbslNodeHashSetPrinter(AbslHashSetPrinterBase):
     """Pretty-printer for absl::node_hash_set<T>."""
 
     template_name = "absl::node_hash_set"
-    type_aliases = ("absl::lts_20210324::node_hash_set", )
+    type_aliases = ("absl::lts_20210324::node_hash_set", "absl::lts_20211102::node_hash_set")
 
     def _extract_element(self, elem_val: gdb.Value, /) -> gdb.Value:
-        # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/internal/node_hash_policy.h#L75
+        # https://github.com/mongodb/mongo/blob/r7.0.0/src/third_party/abseil-cpp/dist/absl/container/internal/node_hash_policy.h#L75
         return elem_val.dereference()
 
 
@@ -115,10 +115,10 @@ class AbslFlatHashSetPrinter(AbslHashSetPrinterBase):
     """Pretty-printer for absl::flat_hash_set<T>."""
 
     template_name = "absl::flat_hash_set"
-    type_aliases = ("absl::lts_20210324::flat_hash_set", )
+    type_aliases = ("absl::lts_20210324::flat_hash_set", "absl::lts_20211102::flat_hash_set")
 
     def _extract_element(self, elem_val: gdb.Value, /) -> gdb.Value:
-        # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/flat_hash_set.h#L478
+        # https://github.com/mongodb/mongo/blob/r7.0.0/src/third_party/abseil-cpp/dist/absl/container/flat_hash_set.h#L478
         return elem_val
 
 
@@ -166,11 +166,11 @@ class AbslNodeHashMapPrinter(AbslHashMapPrinterBase):
     """Pretty-printer for absl::node_hash_map<K, V>."""
 
     template_name = "absl::node_hash_map"
-    type_aliases = ("absl::lts_20210324::node_hash_map", )
+    type_aliases = ("absl::lts_20210324::node_hash_map", "absl::lts_20211102::node_hash_map")
 
     def _extract_key_value_pair(self, kvp_value: gdb.Value,
                                 /) -> typing.Tuple[gdb.Value, gdb.Value]:
-        # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/node_hash_map.h#L580
+        # https://github.com/mongodb/mongo/blob/r7.0.0/src/third_party/abseil-cpp/dist/absl/container/node_hash_map.h#L580
         return (kvp_value["first"], kvp_value["second"])
 
 
@@ -178,11 +178,11 @@ class AbslFlatHashMapPrinter(AbslHashMapPrinterBase):
     """Pretty-printer for absl::flat_hash_map<K, V>."""
 
     template_name = "absl::flat_hash_map"
-    type_aliases = ("absl::lts_20210324::flat_hash_map", )
+    type_aliases = ("absl::lts_20210324::flat_hash_map", "absl::lts_20211102::flat_hash_map")
 
     def _extract_key_value_pair(self, kvp_value: gdb.Value,
                                 /) -> typing.Tuple[gdb.Value, gdb.Value]:
-        # https://github.com/mongodb/mongo/blob/r5.3.0-rc1/src/third_party/abseil-cpp-master/abseil-cpp/absl/container/flat_hash_map.h#L586-L588
+        # https://github.com/mongodb/mongo/blob/r7.0.0/src/third_party/abseil-cpp/dist/absl/container/flat_hash_map.h#L586-L588
         return (kvp_value["key"], kvp_value["value"]["second"])
 
 
