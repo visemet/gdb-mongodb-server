@@ -35,6 +35,7 @@ from gdbmongo.abseil_printers import (AbslFlatHashMapPrinter, AbslNodeHashMapPri
                                       AbslFlatHashSetPrinter)
 from gdbmongo.decorable_printer import DecorationContainerPrinter
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
+from gdbmongo.static_immortal_printer import StaticImmortalPrinter
 from gdbmongo.string_data_printer import StdStringPrinter
 
 
@@ -353,6 +354,45 @@ class LockRequestListPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
         return self.val["_front"] != 0
 
 
+# We don't have to_string() or children() defined on _ResourceIdFactoryPrinter right now. Until we
+# have a sense of how else we might want to use the ResourceIdFactory in GDB pretty printers, it is
+# probably best to mark the type as being internal to this module.
+class _ResourceIdFactoryPrinter:
+    """Pretty-printer for mongo::Lock::ResourceMutex::ResourceIdFactory."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.resource_labels = val["labels"]
+        self.val = val
+
+    def lookup_resource_mutex_label(self, res_id: gdb.Value, /) -> str:
+        """Return the name of the mutex."""
+        xmethod_worker = stdlib_xmethods.VectorMethodsMatcher().match(self.resource_labels.type,
+                                                                      "at")
+
+        label = StdStringPrinter(xmethod_worker(self.resource_labels, res_id)).string()
+        return label
+
+    @classmethod
+    def from_global(cls) -> "_ResourceIdFactoryPrinter":
+        """Return a _ResourceIdFactoryPrinter from its global definition."""
+        # The ResourceIdFactory type was moved to be a nested type within mongo::Lock::ResourceMutex
+        # as part of SERVER-70467 in MongoDB 6.3. Previously in MongoDB 6.0, the ResourceIdFactory
+        # type was defined as its own top-level type.
+        # https://github.com/mongodb/mongo/blob/r7.0.0/src/mongo/db/concurrency/d_concurrency.cpp#L77
+        # https://github.com/mongodb/mongo/blob/r6.0.9/src/mongo/db/concurrency/d_concurrency.cpp#L91
+        if (res_id_factory := gdb_lookup_value(
+                # pylint: disable-next=line-too-long
+                "mongo::Lock::ResourceMutex::ResourceIdFactory::_resourceIdFactory()::resourceIdFactory"
+        )) is not None:
+            return cls(StaticImmortalPrinter(res_id_factory).value())
+
+        if (res_id_factory := gdb_lookup_value(
+                "mongo::(anonymous namespace)::ResourceIdFactory::resourceIdFactory")) is not None:
+            return cls(res_id_factory)
+
+        raise ValueError("Failed to locate ResourceIdFactory")
+
+
 # pylint: disable-next=too-few-public-methods
 class ResourceIdPrinter(SupportsToString):
     # pylint: disable=missing-function-docstring
@@ -372,16 +412,8 @@ class ResourceIdPrinter(SupportsToString):
         ret = f"{{{self.full_hash}: {self.resource_type}, {self.hash_id}}}"
 
         if self.resource_type == gdb_lookup_value("mongo::RESOURCE_MUTEX"):
-            res_id_factory = gdb_lookup_value(
-                "mongo::(anonymous namespace)::ResourceIdFactory::resourceIdFactory")
-            assert res_id_factory is not None
-
-            resource_labels = res_id_factory["labels"]
-            xmethod_worker = stdlib_xmethods.VectorMethodsMatcher().match(
-                resource_labels.type, "at")
-
-            label = StdStringPrinter(xmethod_worker(resource_labels,
-                                                    gdb.Value(self.hash_id))).string()
+            res_id_factory = _ResourceIdFactoryPrinter.from_global()
+            label = res_id_factory.lookup_resource_mutex_label(gdb.Value(self.hash_id))
             ret += f", {label}"
 
             if "DatabaseShardingState" == label:
