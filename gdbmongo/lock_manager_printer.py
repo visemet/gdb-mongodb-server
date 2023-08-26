@@ -473,8 +473,11 @@ class ResourceTypePrinter(SupportsToString):
         tenant_resource_name = (("Tenant", )
                                 if gdb_lookup_value("mongo::RESOURCE_TENANT") is not None else ())
 
+        ddl_resource_names = (("DDLDatabase", "DDLCollection") if
+                              gdb_lookup_value("mongo::RESOURCE_DDL_DATABASE") is not None else ())
+
         return (("Invalid", ) + global_resource_names + tenant_resource_name +
-                ("Database", "Collection", "Metadata", "Mutex"))
+                ("Database", "Collection", "Metadata") + ddl_resource_names + ("Mutex", ))
 
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
