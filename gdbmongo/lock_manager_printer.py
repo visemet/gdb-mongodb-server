@@ -470,7 +470,10 @@ class ResourceTypePrinter(SupportsToString):
         global_resource_names = ("Global", ) if ResourceGlobalIdPrinter.is_type_defined() else (
             "ParallelBatchWriterMode", "ReplicationStateTransition", "Global")
 
-        return (("Invalid", ) + global_resource_names +
+        tenant_resource_name = (("Tenant", )
+                                if gdb_lookup_value("mongo::RESOURCE_TENANT") is not None else ())
+
+        return (("Invalid", ) + global_resource_names + tenant_resource_name +
                 ("Database", "Collection", "Metadata", "Mutex"))
 
     def __init__(self, val: gdb.Value, /) -> None:
