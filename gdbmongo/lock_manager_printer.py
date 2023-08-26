@@ -490,14 +490,15 @@ class ResourceGlobalIdPrinter(SupportsToString):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::ResourceGlobalId."""
 
-    # We duplicate the contents of mongo::ResourceGlobalIdNames[] for the same reasons described
-    # above in ResourceTypePrinter.
-    resource_global_id_names = (
-        "ParallelBatchWriterMode",
-        "FeatureCompatibilityVersion",
-        "ReplicationStateTransition",
-        "Global",
-    )
+    @functools.cached_property
+    def resource_global_id_names(self) -> typing.Tuple[str, ...]:
+        # We duplicate the contents of mongo::ResourceGlobalIdNames[] for the same reasons described
+        # above in ResourceTypePrinter.
+        pbwm_resource_name = ("ParallelBatchWriterMode", ) if gdb_lookup_value(
+            "mongo::resourceIdParallelBatchWriterMode") is not None else ()
+
+        return (pbwm_resource_name +
+                ("FeatureCompatibilityVersion", "ReplicationStateTransition", "Global"))
 
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
