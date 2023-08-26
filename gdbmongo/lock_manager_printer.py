@@ -213,6 +213,18 @@ class _ResourceCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGett
 
         raise ValueError("Failed to locate ResourceCatalog decoration in ServiceContext")
 
+    @classmethod
+    def from_global(cls) -> "_ResourceCatalogPrinter":
+        """Return a _ResourceCatalogPrinter from the function static ResourceCatalog."""
+        # The global ResourceCatalog was previously a decoration on the global ServiceContext before
+        # becoming a function static in SERVER-77227.
+        # https://github.com/mongodb/mongo/blob/r7.1.0-alpha0/src/mongo/db/concurrency/resource_catalog.cpp#L52
+        if (resource_catalog :=
+                gdb_lookup_value("mongo::ResourceCatalog::get()::resourceCatalog")) is not None:
+            return cls(StaticImmortalPrinter(resource_catalog).value())
+
+        return cls.from_global_service_context()
+
 
 # We don't have to_string() or children() defined on _DatabaseShardingStateMapPrinter right now.
 # Until we have a sense of how else we might want to use the DatabaseShardingStateMap in GDB pretty
@@ -436,7 +448,7 @@ class ResourceIdPrinter(SupportsToString):
             catalog: ResourceCatalogGetter
 
             try:
-                catalog = _ResourceCatalogPrinter.from_global_service_context()
+                catalog = _ResourceCatalogPrinter.from_global()
             except ValueError:
                 catalog = _CollectionCatalogPrinter.from_global_service_context()
 
