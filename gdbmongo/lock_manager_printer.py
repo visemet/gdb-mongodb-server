@@ -474,6 +474,16 @@ class ResourceIdPrinter(SupportsToString):
                     if (db_name := dss_map.lookup_database_name(self.val)) is not None:
                         ret += f", {db_name}"
 
+        if self.resource_type in (gdb_lookup_value("mongo::RESOURCE_DDL_DATABASE"),
+                                  gdb_lookup_value("mongo::RESOURCE_DDL_COLLECTION")):
+            # Names for the ScopedDatabaseDDLLock and ScopedCollectionDDLLock resources were added
+            # to the ResourceCatalog as part of SERVER-77512.
+            # https://github.com/mongodb/mongo/blob/r7.1.0-alpha0/src/mongo/db/concurrency/resource_catalog.cpp#L66-L69
+            resource_catalog = _ResourceCatalogPrinter.from_global()
+
+            if (resource_name := resource_catalog.lookup_resource_name(self.val)) is not None:
+                ret += f", {resource_name}"
+
         if self.resource_type in (gdb_lookup_value("mongo::RESOURCE_DATABASE"),
                                   gdb_lookup_value("mongo::RESOURCE_COLLECTION")):
             catalog: ResourceCatalogGetter
