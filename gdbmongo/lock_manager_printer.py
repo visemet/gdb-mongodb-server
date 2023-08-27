@@ -169,10 +169,28 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGe
         return cls(catalog)
 
 
+# pylint: disable-next=too-few-public-methods
+class ResourceIdFactoryGetter(typing.Protocol):
+
+    @abc.abstractmethod
+    def lookup_resource_mutex_label(self, res_id: gdb.Value, /) -> str:
+        """Return the name of the mutex."""
+        raise NotImplementedError
+
+    @classmethod
+    def _lookup_resource_mutex_label_from(cls, res_id: gdb.Value, /, *,
+                                          all_labels: gdb.Value) -> str:
+        """Return the name of the mutex from the specified vector of resource labels."""
+        xmethod_worker = stdlib_xmethods.VectorMethodsMatcher().match(all_labels.type, "at")
+        label = StdStringPrinter(xmethod_worker(all_labels, res_id)).string()
+        return label
+
+
 # We don't have to_string() or children() defined on _ResourceCatalogPrinter right now. Until we
 # have a sense of how else we might want to use the ResourceCatalog in GDB pretty printers, it is
 # probably best to mark the type as being internal to this module.
-class _ResourceCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGetter):
+class _ResourceCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGetter,
+                              ResourceIdFactoryGetter):
     """Pretty-printer for mongo::ResourceCatalog."""
 
     def __init__(self, val: gdb.Value, /) -> None:
@@ -190,6 +208,18 @@ class _ResourceCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGett
 
         namespaces = [nss for (_, nss) in AbslFlatHashSetPrinter(nss_set).children()]
         return StdStringPrinter(namespaces[0]).string() if len(namespaces) == 1 else None
+
+    @functools.cached_property
+    def resource_mutex_labels(self) -> gdb.Value:
+        """Get the vector of resource mutex labels."""
+        # The ResourceCatalog::_mutexResourceIdLabels member was added as part of SERVER-77227.
+        # https://github.com/mongodb/mongo/blob/r7.1.0-alpha0/src/mongo/db/concurrency/resource_catalog.h#L81
+        # We expose the instance attribute lazily here rather than defining it in __init__() because
+        # the member won't always exist.
+        return self.val["_mutexResourceIdLabels"]
+
+    def lookup_resource_mutex_label(self, res_id: gdb.Value, /) -> str:
+        return self._lookup_resource_mutex_label_from(res_id, all_labels=self.resource_mutex_labels)
 
     @classmethod
     def from_service_context(cls, service_context: gdb.Value, /) -> "_ResourceCatalogPrinter":
@@ -369,7 +399,7 @@ class LockRequestListPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
 # We don't have to_string() or children() defined on _ResourceIdFactoryPrinter right now. Until we
 # have a sense of how else we might want to use the ResourceIdFactory in GDB pretty printers, it is
 # probably best to mark the type as being internal to this module.
-class _ResourceIdFactoryPrinter:
+class _ResourceIdFactoryPrinter(ResourceIdFactoryGetter):
     """Pretty-printer for mongo::Lock::ResourceMutex::ResourceIdFactory."""
 
     def __init__(self, val: gdb.Value, /) -> None:
@@ -377,12 +407,7 @@ class _ResourceIdFactoryPrinter:
         self.val = val
 
     def lookup_resource_mutex_label(self, res_id: gdb.Value, /) -> str:
-        """Return the name of the mutex."""
-        xmethod_worker = stdlib_xmethods.VectorMethodsMatcher().match(self.resource_labels.type,
-                                                                      "at")
-
-        label = StdStringPrinter(xmethod_worker(self.resource_labels, res_id)).string()
-        return label
+        return self._lookup_resource_mutex_label_from(res_id, all_labels=self.resource_labels)
 
     @classmethod
     def from_global(cls) -> "_ResourceIdFactoryPrinter":
@@ -424,7 +449,13 @@ class ResourceIdPrinter(SupportsToString):
         ret = f"{{{self.full_hash}: {self.resource_type}, {self.hash_id}}}"
 
         if self.resource_type == gdb_lookup_value("mongo::RESOURCE_MUTEX"):
-            res_id_factory = _ResourceIdFactoryPrinter.from_global()
+            res_id_factory: ResourceIdFactoryGetter
+
+            try:
+                res_id_factory = _ResourceIdFactoryPrinter.from_global()
+            except ValueError:
+                res_id_factory = _ResourceCatalogPrinter.from_global()
+
             label = res_id_factory.lookup_resource_mutex_label(gdb.Value(self.hash_id))
             ret += f", {label}"
 
