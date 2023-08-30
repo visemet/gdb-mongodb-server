@@ -33,7 +33,7 @@ import gdb
 from gdbmongo import stdlib_printers, stdlib_xmethods
 from gdbmongo.abseil_printers import (AbslFlatHashMapPrinter, AbslNodeHashMapPrinter,
                                       AbslFlatHashSetPrinter)
-from gdbmongo.decorable_printer import DecorationContainerPrinter
+from gdbmongo.decorable_printer import DecorationIterator
 from gdbmongo.gdbutil import gdb_lookup_value
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
 from gdbmongo.static_immortal_printer import StaticImmortalPrinter
@@ -150,8 +150,7 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGe
             # https://github.com/mongodb/mongo/blob/r4.4.13/src/mongo/db/catalog/collection_catalog.cpp#L47-L48
             catalog_getter = cls._CollectionCatalogDecoration()
 
-        iterator = DecorationContainerPrinter(service_context["_decorations"]).children()
-        for (_, decoration) in iterator:
+        for decoration in DecorationIterator(service_context):
             if decoration.type == catalog_getter.catalog_type:
                 catalog = catalog_getter(decoration)
                 break
@@ -229,8 +228,7 @@ class _ResourceCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGett
 
             raise ValueError(err.args[0]) from err
 
-        iterator = DecorationContainerPrinter(service_context["_decorations"]).children()
-        for (_, decoration) in iterator:
+        for decoration in DecorationIterator(service_context):
             if decoration.type == resource_catalog_type:
                 return cls(decoration)
 
@@ -284,8 +282,7 @@ class _DatabaseShardingStateMapPrinter(ServiceContextDecorationMixin):
 
             raise ValueError(err.args[0]) from err
 
-        iterator = DecorationContainerPrinter(service_context["_decorations"]).children()
-        for (_, decoration) in iterator:
+        for decoration in DecorationIterator(service_context):
             if decoration.type == databases_type:
                 return cls(decoration)
 
@@ -341,8 +338,7 @@ class LockManagerPrinter(PrettyPrinterProtocol, SupportsDisplayHint, ServiceCont
         """Return a LockManagerPrinter from its decoration on ServiceContext."""
         lock_manager_type = gdb.lookup_type("mongo::LockManager")
 
-        iterator = DecorationContainerPrinter(service_context["_decorations"]).children()
-        for (_, decoration) in iterator:
+        for decoration in DecorationIterator(service_context):
             if decoration.type == lock_manager_type:
                 lock_manager = decoration
                 break

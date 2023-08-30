@@ -155,6 +155,14 @@ class DecorationContainerPrinter(PrettyPrinterProtocol):
         return match.group(1)
 
 
+# pylint: disable-next=invalid-name
+def DecorationIterator(val: gdb.Value) -> typing.Iterator[gdb.Value]:
+    """Return a generator of every decoration in the given mongo::Decorable<T>."""
+    iterator = DecorationContainerPrinter(val["_decorations"]).children()
+    for (_, decoration) in iterator:
+        yield decoration
+
+
 def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
     """Add the DecorationContainerPrinter to the pretty printer collection given."""
     pretty_printer.add_printer("mongo::DecorationContainer", "^mongo::DecorationContainer<.*>$",
