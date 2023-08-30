@@ -20,26 +20,8 @@ import typing
 import gdb
 
 from gdbmongo import stdlib_printers
+from gdbmongo.gdbutil import gdb_resolve_type
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint
-
-
-def gdb_resolve_type(typ: gdb.Type, /) -> gdb.Type:
-    """Look up the name of a C++ type with any typedefs, pointers, and references stripped.
-
-    This function is useful in contexts where template arguments can be pointers because GDB may not
-    load the fields of the templated entity otherwise.
-    """
-    typ = typ.strip_typedefs()
-
-    while typ.code in (gdb.TYPE_CODE_PTR, gdb.TYPE_CODE_REF):
-        typ = typ.target().strip_typedefs()
-
-    if typ.code == gdb.TYPE_CODE_FUNC:
-        return typ
-
-    typename = typ.tag if typ.tag is not None else typ.name
-    assert typename is not None
-    return gdb.lookup_type(typename)
 
 
 # pylint: disable-next=invalid-name

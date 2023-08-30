@@ -17,8 +17,8 @@
 
 import gdb
 
-from gdbmongo.abseil_printers import gdb_resolve_type
 from gdbmongo.boost_printers import SingletonPrinterBase
+from gdbmongo.gdbutil import gdb_resolve_type
 from gdbmongo.printer_protocol import PrettyPrinterProtocol
 
 

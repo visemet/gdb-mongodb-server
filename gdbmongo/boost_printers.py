@@ -20,7 +20,7 @@ import typing
 
 import gdb
 
-from gdbmongo.abseil_printers import gdb_resolve_type
+from gdbmongo.gdbutil import gdb_resolve_type
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsChildren, SupportsDisplayHint
 
 

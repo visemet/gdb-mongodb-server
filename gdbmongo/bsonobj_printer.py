@@ -27,7 +27,7 @@ import gdb
 from gdbmongo.bsonmisc_printer import (MongoBSONBinData, MongoBSONCode, MongoBSONDBRef,
                                        MongoBSONRegEx, MongoBSONSymbol)
 from gdbmongo.date_printer import MongoDateT
-from gdbmongo.lock_manager_printer import gdb_lookup_value
+from gdbmongo.gdbutil import gdb_lookup_value
 from gdbmongo.objectid_printer import MongoOID
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint
 from gdbmongo.string_data_printer import MongoStringData

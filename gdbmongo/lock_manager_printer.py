@@ -34,17 +34,10 @@ from gdbmongo import stdlib_printers, stdlib_xmethods
 from gdbmongo.abseil_printers import (AbslFlatHashMapPrinter, AbslNodeHashMapPrinter,
                                       AbslFlatHashSetPrinter)
 from gdbmongo.decorable_printer import DecorationContainerPrinter
+from gdbmongo.gdbutil import gdb_lookup_value
 from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
 from gdbmongo.static_immortal_printer import StaticImmortalPrinter
 from gdbmongo.string_data_printer import StdStringPrinter
-
-
-def gdb_lookup_value(symbol_name: str, /) -> typing.Optional[gdb.Value]:
-    """Return the gdb.Value corresponding to the symbol name given."""
-    if (symbol := gdb.lookup_symbol(symbol_name)[0]) is not None:
-        return symbol.value()
-
-    return None
 
 
 class ServiceContextDecorationMixin(typing.Protocol):
