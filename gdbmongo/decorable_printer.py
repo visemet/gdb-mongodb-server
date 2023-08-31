@@ -19,8 +19,9 @@ This includes MongoDB types like ServiceContext, Client, and OperationContext. D
 a memory compartment and a registration scheme where other .cpp files can be allocated an offset
 into the memory compartment.
 
-For example, after the DecorationContainerPrinter pretty printer has been registered in GDB, the
-decorated values on the global ServiceContext can be displayed with the following command:
+For example, after the DecorationContainerPrinter and DecorationBufferPrinter pretty printers have
+been registered in GDB, the decorated values on the global ServiceContext can be displayed with the
+following command:
 
 .. code-block:: gdb
 
@@ -34,6 +35,7 @@ import typing
 import gdb
 
 from gdbmongo import stdlib_printers, stdlib_xmethods
+from gdbmongo.gdbutil import gdb_lookup_value
 from gdbmongo.printer_protocol import PrettyPrinterProtocol
 
 
@@ -176,15 +178,93 @@ class DecorationContainerPrinter(DecorationMemoryPrinterBase):
         return match.group(1)
 
 
+class DecorationBufferPrinter(DecorationMemoryPrinterBase):
+    """Pretty-printer for mongo::decorable_detail::DecorationBuffer<DecoratedType>.
+
+    This includes MongoDB types like ServiceContext, Client, and OperationContext.
+    """
+
+    symbol_name_regexp = re.compile(r"^typeinfo for (.*) in ")
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        decorated_type_name = val.type.template_argument(0).tag
+        registry = gdb_lookup_value(
+            f"mongo::decorable_detail::getRegistry<{decorated_type_name}>()::reg")
+        assert registry is not None
+        self.registry = registry
+        self.registry_entries = registry["_entries"]
+
+        # len() called by DecorationMemoryPrinterBase.__init__() depends on self.registry_entries
+        # being defined first.
+        super().__init__(val)
+
+        self.decorations_data = val["_data"]
+
+    def __len__(self) -> int:
+        iterator = stdlib_printers.StdVectorPrinter("std::vector", self.registry_entries).children()
+        length = int(iterator.finish - iterator.item)
+        return length
+
+    def _iterate_raw_entries(self) -> typing.Iterator[typing.Tuple[gdb.Type, gdb.Value]]:
+        iterator = stdlib_printers.StdVectorPrinter("std::vector", self.registry_entries).children()
+        for (index, (_, entry)) in enumerate(iterator):
+            data_offset = int(entry["_offset"])
+            decoration_value = self.decorations_data[data_offset]
+
+            assert index < len(self._decorations_type)
+            if (decoration_type := self._decorations_type[index]) is None:
+                type_name = self._get_decoration_type_name(entry)
+                decoration_address = int(decoration_value.address)
+                decoration_type = self._cast_decoration_value(type_name, decoration_address).type
+                self._decorations_type[index] = decoration_type
+
+            yield (decoration_type, decoration_value)
+
+    def _get_decoration_type_name(self, registry_entry: gdb.Value, /) -> str:
+        """Return the name of the decoration type."""
+        type_info = registry_entry["_typeInfo"]
+
+        # Unlike with DecorationContainerPrinter._get_decoration_type_name(), it isn't strictly
+        # necessary to use the `info symbol <address>` command to retrieve the type name. This is
+        # because the built in handling for std::type_info* objects in gdb.Type.__str__() won't
+        # cause GDB to omit any default template arguments. However, we use the `info symbol`
+        # command here for consistency.
+        symbol_info = gdb.execute(f"info symbol {int(type_info)}", to_string=True).rstrip()
+        if (match := self.symbol_name_regexp.match(symbol_info)) is None:
+            raise ValueError(
+                f"Unable to extract symbol name: {symbol_info}; str() would have returned"
+                f" '{str(type_info)}'; perhaps we should consider adding a fallback mechanism?")
+
+        return match.group(1)
+
+
 # pylint: disable-next=invalid-name
 def DecorationIterator(val: gdb.Value) -> typing.Iterator[gdb.Value]:
     """Return a generator of every decoration in the given mongo::Decorable<T>."""
-    iterator = DecorationContainerPrinter(val["_decorations"]).children()
+    try:
+        # The memory layout for the Decorable<T> type was changed as part of SERVER-78390.
+        # https://github.com/mongodb/mongo/blob/r7.1.0-rc0/src/mongo/util/decorable.h#L770
+        # https://github.com/mongodb/mongo/blob/r7.0.0/src/mongo/util/decorable.h#L154
+        gdb.lookup_type("mongo::decorable_detail::Registry")
+    except gdb.error as err:
+        if not err.args[0].startswith("No type named "):
+            raise
+
+        iterator = DecorationContainerPrinter(val["_decorations"]).children()
+    else:
+        iterator = DecorationBufferPrinter(val["_decorations"]).children()
+
     for (_, decoration) in iterator:
         yield decoration
 
 
 def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:
-    """Add the DecorationContainerPrinter to the pretty printer collection given."""
+    """Add the DecorationContainerPrinter and DecorationBufferPrinter to the pretty printer
+    collection given.
+    """
     pretty_printer.add_printer("mongo::DecorationContainer", "^mongo::DecorationContainer<.*>$",
                                DecorationContainerPrinter)
+
+    pretty_printer.add_printer("mongo::decorable_detail::DecorationBuffer",
+                               "^mongo::decorable_detail::DecorationBuffer<.*>$",
+                               DecorationBufferPrinter)
