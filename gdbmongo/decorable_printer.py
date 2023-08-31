@@ -27,6 +27,7 @@ decorated values on the global ServiceContext can be displayed with the followin
     print 'mongo::(anonymous namespace)::globalServiceContext'._decorations
 """
 
+import collections.abc
 import re
 import typing
 
@@ -36,14 +37,10 @@ from gdbmongo import stdlib_printers, stdlib_xmethods
 from gdbmongo.printer_protocol import PrettyPrinterProtocol
 
 
-class DecorationContainerPrinter(PrettyPrinterProtocol):
+class DecorationMemoryPrinterBase(PrettyPrinterProtocol, collections.abc.Sized):
     # pylint: disable=missing-function-docstring
-    """Pretty-printer for mongo::DecorationContainer<DecoratedType>.
+    """Pretty-printer base class for decorations storage."""
 
-    This includes MongoDB types like ServiceContext, Client, and OperationContext.
-    """
-
-    symbol_name_regexp = re.compile(r"^(.*) in ")
     type_name_regexp = re.compile(r"^(.*[\w>])([\s\*]*)$")
 
     _cached_decorations_type: typing.ClassVar[typing.Dict[
@@ -53,14 +50,6 @@ class DecorationContainerPrinter(PrettyPrinterProtocol):
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
-        decoration_registry = val["_registry"]
-        self.decorations_info = decoration_registry["_decorationInfo"]
-        self.decorations_storage = val["_decorationData"]
-
-        registry_type = decoration_registry.dereference().type
-        self.constructor_regexp = re.compile(
-            fr"^void {registry_type.name}::constructAt<\s*(.*)\s*>\(void\*\)$")
-
         decorated_type_name = val.type.template_argument(0).tag
         assert decorated_type_name is not None
         # The number of decorations for a particular decorated type is static in a MongoDB program.
@@ -69,15 +58,65 @@ class DecorationContainerPrinter(PrettyPrinterProtocol):
         self._decorations_type = self._cached_decorations_type.setdefault(
             decorated_type_name, [None] * len(self))
 
+    def to_string(self) -> str:
+        return f"{self.val.type.name} with {stdlib_printers.num_elements(len(self))}"
+
+    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
+        for (index, (decoration_type, decoration_value)) in enumerate(self._iterate_raw_entries()):
+            decoration_type_p = decoration_type.pointer()
+            decoration_address = decoration_value.address
+
+            # decoration_value.cast(decoration_type) may not be an addressable object so we get its
+            # address and perform the cast through the unsigned char* representation of the value.
+            # This ensures decorations which are themselves pointer types are correctly casted.
+            yield (f"[{index}] = ({decoration_type_p}) {hex(int(decoration_address))}",
+                   decoration_address.cast(decoration_type_p).dereference())
+
+    def _iterate_raw_entries(self) -> typing.Iterator[typing.Tuple[gdb.Type, gdb.Value]]:
+        """Return a generator of every decoration in the given mongo::Decorable<T> as pairs of
+        (decoration type, decoration value).
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def _cast_decoration_value(cls, type_name: str, decoration_address: int, /) -> gdb.Value:
+        """Return the type of the decoration value."""
+        # We cannot use gdb.lookup_type() when the decoration type is a pointer type, e.g.
+        # ServiceContext::declareDecoration<VectorClock*>(). gdb.parse_and_eval() is one of the few
+        # ways to convert a type expression into a gdb.Type value. Some care is taken to quote the
+        # non-pointer portion of the type so resolution for a type defined within an anonymous
+        # namespace works correctly.
+        escaped = cls.type_name_regexp.sub(r"'\1'\2*", type_name)
+        return gdb.parse_and_eval(f"({escaped}) {decoration_address}").dereference()
+
+
+class DecorationContainerPrinter(DecorationMemoryPrinterBase):
+    """Pretty-printer for mongo::DecorationContainer<DecoratedType>.
+
+    This includes MongoDB types like ServiceContext, Client, and OperationContext.
+    """
+
+    symbol_name_regexp = re.compile(r"^(.*) in ")
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        decoration_registry = val["_registry"]
+        self.decorations_info = decoration_registry["_decorationInfo"]
+        self.decorations_storage = val["_decorationData"]
+
+        # len() called by DecorationMemoryPrinterBase.__init__() depends on self.decorations_info
+        # being defined first.
+        super().__init__(val)
+
+        registry_type = decoration_registry.dereference().type
+        self.constructor_regexp = re.compile(
+            fr"^void {registry_type.name}::constructAt<\s*(.*)\s*>\(void\*\)$")
+
     def __len__(self) -> int:
         iterator = stdlib_printers.StdVectorPrinter("std::vector", self.decorations_info).children()
         length = int(iterator.finish - iterator.item)
         return length
 
-    def to_string(self) -> str:
-        return f"{self.val.type.name} with {stdlib_printers.num_elements(len(self))}"
-
-    def children(self) -> typing.Iterator[typing.Tuple[str, gdb.Value]]:
+    def _iterate_raw_entries(self) -> typing.Iterator[typing.Tuple[gdb.Type, gdb.Value]]:
         xmethod_worker = stdlib_xmethods.UniquePtrMethodsMatcher().match(
             self.decorations_storage.type, "get")
 
@@ -88,41 +127,22 @@ class DecorationContainerPrinter(PrettyPrinterProtocol):
         # `obj.address` to UniquePtrGetWorker to cancel out the obj.dereference() call.
         decorations_storage = xmethod_worker(self.decorations_storage.address)
         iterator = stdlib_printers.StdVectorPrinter("std::vector", self.decorations_info).children()
-        for (index, (_, descriptor)) in enumerate(iterator):
-            descriptor_offset = int(descriptor["descriptor"]["_index"])
-            decoration_value = decorations_storage[descriptor_offset]
-            decoration_type = self._lookup_decoration_type(descriptor, index)
+        for (index, (_, decoration_info)) in enumerate(iterator):
+            storage_offset = int(decoration_info["descriptor"]["_index"])
+            decoration_value = decorations_storage[storage_offset]
 
-            # decoration_value.cast(decoration_type) may not be an addressable object so we get its
-            # address and perform the cast through the unsigned char* representation of the value.
-            # This ensures decorations which are themselves pointer types are correctly casted.
-            yield (
-                f"[{index}] = ({decoration_type.pointer()}) {hex(int(decoration_value.address))}",
-                decoration_value.address.cast(decoration_type.pointer()).dereference())
+            assert index < len(self._decorations_type)
+            if (decoration_type := self._decorations_type[index]) is None:
+                type_name = self._get_decoration_type_name(decoration_info)
+                decoration_address = int(decoration_value.address)
+                decoration_type = self._cast_decoration_value(type_name, decoration_address).type
+                self._decorations_type[index] = decoration_type
 
-    def _lookup_decoration_type(self, descriptor: gdb.Value, index: int, /) -> gdb.Type:
-        """Return the possibly cached type of the decoration value."""
-        assert index < len(self._decorations_type)
-        if (typ := self._decorations_type[index]) is None:
-            typ = self._do_lookup_decoration_type(self._get_decoration_type_name(descriptor),
-                                                  descriptor)
-            self._decorations_type[index] = typ
+            yield (decoration_type, decoration_value)
 
-        return typ
-
-    def _do_lookup_decoration_type(self, type_name: str, descriptor: gdb.Value, /) -> gdb.Type:
-        """Return the type of the decoration value."""
-        # We cannot use gdb.lookup_type() when the decoration type is a pointer type, e.g.
-        # ServiceContext::declareDecoration<VectorClock*>(). gdb.parse_and_eval() is one of the few
-        # ways to convert a type expression into a gdb.Type value. Some care is taken to quote the
-        # non-pointer portion of the type so resolution for a type defined within an anonymous
-        # namespace works correctly.
-        escaped = self.type_name_regexp.sub(r"'\1'\2*", type_name)
-        return gdb.parse_and_eval(f"({escaped}) {int(descriptor.address)}").type.target()
-
-    def _get_decoration_type_name(self, descriptor: gdb.Value, /) -> str:
+    def _get_decoration_type_name(self, decoration_info: gdb.Value, /) -> str:
         """Return the name of the decoration type."""
-        function = descriptor["constructor"]
+        function = decoration_info["constructor"]
         address = int(function.dereference().address)
 
         # We use the `info symbol <address>` command to retrieve the type name for a couple reasons:
