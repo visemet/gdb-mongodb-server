@@ -94,10 +94,11 @@ class DecorationContainerPrinter(PrettyPrinterProtocol):
             decoration_type = self._lookup_decoration_type(descriptor, index)
 
             # decoration_value.cast(decoration_type) may not be an addressable object so we get its
-            # address through the unsigned char[] representation of the value.
+            # address and perform the cast through the unsigned char* representation of the value.
+            # This ensures decorations which are themselves pointer types are correctly casted.
             yield (
                 f"[{index}] = ({decoration_type.pointer()}) {hex(int(decoration_value.address))}",
-                decoration_value.cast(decoration_type))
+                decoration_value.address.cast(decoration_type.pointer()).dereference())
 
     def _lookup_decoration_type(self, descriptor: gdb.Value, index: int, /) -> gdb.Type:
         """Return the possibly cached type of the decoration value."""
