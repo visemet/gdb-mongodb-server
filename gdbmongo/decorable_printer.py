@@ -147,6 +147,13 @@ class DecorationContainerPrinter(DecorationMemoryPrinterBase):
         function = decoration_info["constructor"]
         address = int(function.dereference().address)
 
+        if address == 0:
+            # The changes from SERVER-76788 made it possible for the constructor function to be
+            # nullptr when the decoration type is trivially constructible. This situation prevents
+            # the determination of the actual decoration type. We return `unsigned char` here to
+            # reflect the decoration having the existing opaque type of the underlying storage.
+            return "unsigned char"
+
         # We use the `info symbol <address>` command to retrieve the type name for a couple reasons:
         #
         #   1. Unlike gdb.libstdcxx.v6.printers.function_pointer_to_name(), the `info symbol`
