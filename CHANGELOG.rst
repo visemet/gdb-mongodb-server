@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.11.0 (2023-09-16)
+-------------------
+
+* Support displaying contents of partitions within CursorManager.
+
 0.10.0 (2023-09-03)
 -------------------
 

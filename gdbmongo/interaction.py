@@ -22,10 +22,10 @@ import warnings
 import gdb
 import gdb.printing
 
-from gdbmongo import (abseil_printers, boost_printers, bsonmisc_printer, bsonobj_printer,
-                      date_printer, decorable_printer, lock_manager_printer, objectid_printer,
-                      static_immortal_printer, status_printer, string_data_printer,
-                      thread_name_printer, timestamp_printer, uuid_printer)
+from gdbmongo import (abseil_printers, aligned_printer, boost_printers, bsonmisc_printer,
+                      bsonobj_printer, date_printer, decorable_printer, lock_manager_printer,
+                      objectid_printer, static_immortal_printer, status_printer,
+                      string_data_printer, thread_name_printer, timestamp_printer, uuid_printer)
 from gdbmongo.detect_toolchain import ToolchainVersionDetector
 from gdbmongo.printer_protocol import SupportsChildren, SupportsToString
 from gdbmongo.stdlib_printers_loader import resolve_import
@@ -109,6 +109,7 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
 
     pretty_printer_mongo_extras = RegexpCollectionPrettyPrinter("gdbmongo-mongo-extras")
     pretty_printer_mongo_extras.enabled = mongo_extras
+    aligned_printer.add_printers(pretty_printer_mongo_extras)
     bsonmisc_printer.add_printers(pretty_printer_mongo_extras)
     bsonobj_printer.add_printers(pretty_printer_mongo_extras)
     date_printer.add_printers(pretty_printer_mongo_extras)
