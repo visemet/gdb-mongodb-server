@@ -207,6 +207,23 @@ class DecorationBufferPrinter(DecorationMemoryPrinterBase):
 
         self.decorations_data = val["_data"]
 
+        try:
+            # The mongo::decorable_detail::RegistryEntry class with its private, underscore-prefixed
+            # members replaced the mongo::decorable_detail::Registry::Entry struct as part of
+            # SERVER-77825. The mongo::decorable_detail::Registry::Entry struct had public,
+            # non-prefixed members.
+            # https://github.com/mongodb/mongo/blob/r7.1.0-rc0/src/mongo/util/decorable.h#L445-L446
+            gdb.lookup_type("mongo::decorable_detail::RegistryEntry")
+        except gdb.error as err:
+            if not err.args[0].startswith("No type named "):
+                raise
+
+            self._type_info_field_name = "typeInfo"
+            self._offset_field_name = "offset"
+        else:
+            self._type_info_field_name = "_typeInfo"
+            self._offset_field_name = "_offset"
+
     def __len__(self) -> int:
         iterator = stdlib_printers.StdVectorPrinter("std::vector", self.registry_entries).children()
         length = int(iterator.finish - iterator.item)
@@ -215,7 +232,7 @@ class DecorationBufferPrinter(DecorationMemoryPrinterBase):
     def _iterate_raw_entries(self) -> typing.Iterator[typing.Tuple[gdb.Type, gdb.Value]]:
         iterator = stdlib_printers.StdVectorPrinter("std::vector", self.registry_entries).children()
         for (index, (_, entry)) in enumerate(iterator):
-            data_offset = int(entry["_offset"])
+            data_offset = int(entry[self._offset_field_name])
             decoration_value = self.decorations_data[data_offset]
 
             assert index < len(self._decorations_type)
@@ -229,7 +246,7 @@ class DecorationBufferPrinter(DecorationMemoryPrinterBase):
 
     def _get_decoration_type_name(self, registry_entry: gdb.Value, /) -> str:
         """Return the name of the decoration type."""
-        type_info = registry_entry["_typeInfo"]
+        type_info = registry_entry[self._type_info_field_name]
 
         # Unlike with DecorationContainerPrinter._get_decoration_type_name(), it isn't strictly
         # necessary to use the `info symbol <address>` command to retrieve the type name. This is
