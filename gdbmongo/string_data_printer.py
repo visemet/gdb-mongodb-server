@@ -48,7 +48,8 @@ class ValueAsPythonStringMixin(SupportsToString):
         if isinstance(ret, gdb.Value):
             return ret.string()
         if isinstance(ret, LazyString):
-            return ret.value().string(length=ret.length)
+            # LazyString.value() can only be called for non-nullptr strings.
+            return ret.value().string(length=ret.length) if ret.address != 0 else ""
         return ret
 
 
