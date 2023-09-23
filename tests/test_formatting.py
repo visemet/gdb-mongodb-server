@@ -45,7 +45,7 @@ def run_yapf(fix: bool) -> bool:
         "",
         "--in-place" if fix else "--diff",
         "--verbose",
-    ] + [str(path) for path in find_pyfiles()])
+    ] + [str(path) for path in find_pyfiles() if path != pathlib.Path("../gdbmongo/_version.py")])
 
     return ret == 0 or fix
 
