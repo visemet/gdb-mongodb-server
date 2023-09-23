@@ -51,6 +51,42 @@ class TypeCode(enum.IntEnum):
     TYPE_CODE_INTERNAL_FUNCTION = 27
 
 
+class Field:
+
+    @property
+    def bitpos(self) -> typing.Optional[int]:
+        ...
+
+    # The `enumval` property is omitted here because it is assumed gdb.Type.fields() will only be
+    # used for TYPE_CODE_STRUCT C++ types. The `enumval` property is mutually exclusive with the
+    # `bitpos` property.
+    # https://sourceware.org/git/?p=binutils-gdb.git;a=blob;f=gdb/python/py-type.c;hb=refs/tags/gdb-12.1-release#l184
+
+    @property
+    def name(self) -> typing.Optional[str]:
+        ...
+
+    @property
+    def artificial(self) -> bool:
+        ...
+
+    @property
+    def is_base_class(self) -> bool:
+        ...
+
+    @property
+    def bitsize(self) -> int:
+        ...
+
+    @property
+    def type(self) -> typing.Optional[Type]:
+        ...
+
+    @property
+    def parent_type(self) -> Type:
+        ...
+
+
 class Type:
 
     @property
@@ -63,6 +99,9 @@ class Type:
 
     @property
     def tag(self) -> typing.Optional[str]:
+        ...
+
+    def fields(self) -> typing.List[Field]:
         ...
 
     def unqualified(self) -> Type:

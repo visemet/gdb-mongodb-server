@@ -36,6 +36,7 @@ from gdb._objfile import current_objfile as current_objfile
 from gdb._progspace import Progspace as Progspace
 from gdb._symbol import Symbol as Symbol
 from gdb._symbol import lookup_symbol as lookup_symbol
+from gdb._type import Field as Field
 from gdb._type import Type as Type
 from gdb._type import TypeCode
 from gdb._type import lookup_type as lookup_type
