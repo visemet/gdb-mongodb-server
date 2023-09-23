@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.12.0 (2023-09-22)
+-------------------
+
+* Support displaying thread names in core dump of MongoDB 4.4, 5.0, and 6.0.
+
 0.11.0 (2023-09-16)
 -------------------
 
