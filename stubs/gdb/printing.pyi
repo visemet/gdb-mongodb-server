@@ -24,7 +24,7 @@ import typing
 from gdb._lazy_string import LazyString
 from gdb._objfile import Objfile
 from gdb._progspace import Progspace
-from gdb._value import Value
+from gdb._value import ConstructibleFrom, Value
 
 
 class _SupportsDisplayHint(typing.Protocol):
@@ -44,7 +44,7 @@ class _SupportsToString(typing.Protocol):
 class _SupportsChildren(typing.Protocol):
 
     @abc.abstractmethod
-    def children(self) -> typing.Iterator[typing.Tuple[str, Value]]:
+    def children(self) -> typing.Iterator[typing.Tuple[str, ConstructibleFrom]]:
         raise NotImplementedError
 
 
