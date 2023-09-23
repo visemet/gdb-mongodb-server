@@ -438,7 +438,10 @@ class LockRequestPrinter(SupportsChildren):
                             f"{hex(thread_id)} (GDB Id: thread {thread.num}{thread_name})")
                         break
                 else:
-                    thread_id_str = hex(thread_id)
+                    if thread_id == 0:
+                        thread_id_str = "No active thread (likely a transaction)"
+                    else:
+                        thread_id_str = hex(thread_id)
 
                 # gdb.Value.__str__() returns a Python string according to how the value would be
                 # **printed** by GDB. We therefore yield `thread_id_str` directly rather than
