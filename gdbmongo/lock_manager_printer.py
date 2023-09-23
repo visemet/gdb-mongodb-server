@@ -26,6 +26,7 @@ core file can be displayed with the following commands:
 
 import abc
 import functools
+import struct
 import typing
 
 import gdb
@@ -34,8 +35,9 @@ from gdbmongo import stdlib_printers, stdlib_xmethods
 from gdbmongo.abseil_printers import (AbslFlatHashMapPrinter, AbslNodeHashMapPrinter,
                                       AbslFlatHashSetPrinter)
 from gdbmongo.decorable_printer import DecorationIterator
-from gdbmongo.gdbutil import gdb_lookup_value
-from gdbmongo.printer_protocol import PrettyPrinterProtocol, SupportsDisplayHint, SupportsToString
+from gdbmongo.gdbutil import gdb_is_libthread_db_loaded, gdb_lookup_value
+from gdbmongo.printer_protocol import (PrettyPrinterProtocol, SupportsChildren, SupportsDisplayHint,
+                                       SupportsToString)
 from gdbmongo.static_immortal_printer import StaticImmortalPrinter
 from gdbmongo.string_data_printer import StdStringPrinter
 
@@ -385,6 +387,67 @@ class LockRequestListPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
         return self.val["_front"] != 0
 
 
+# pylint: disable-next=too-few-public-methods
+class LockRequestPrinter(SupportsChildren):
+    # pylint: disable=missing-function-docstring
+    """Pretty-printer for mongo::LockRequest."""
+
+    def __init__(self, val: gdb.Value, /) -> None:
+        self.val = val
+
+    def children(self) -> typing.Iterator[typing.Tuple[str, typing.Union[str, gdb.Value]]]:
+        for field in self.val.type.fields():
+            assert field.name is not None, (
+                "Unexpected anonymous field in mongo::LockRequest struct")
+            assert not field.is_base_class, (
+                f"Unexpected base type '{field.name}' for mongo::LockRequest struct")
+            assert not field.artificial, (
+                f"Unexpected vtable '{field.name}' for mongo::LockRequest struct")
+
+            if field.bitpos is None:
+                # The mongo::LockRequest struct doesn't have any static members nor would it likely
+                # ever have any. But we defensively skip listing any static members here.
+                continue
+
+            data_member = self.val[field.name]
+            yield (field.name, data_member)
+
+            if field.name != "locker":
+                continue
+
+            locker = data_member.dereference()
+
+            if (locker_impl_type := gdb.lookup_type("mongo::LockerImpl")) == locker.dynamic_type:
+                thread_id = int(locker.cast(locker_impl_type)["_threadId"]["_M_thread"])
+
+                # gdb.InferiorThread.handle() raises a RuntimeError when the libthread_db library is
+                # not available. In this situation, the pthread_t address (std::thread::id) cannot
+                # be known for the gdb.InferiorThread. We therefore skip iterating over the threads
+                # when the libthread_db library is not available.
+                all_threads = (gdb.selected_inferior().threads()
+                               if gdb_is_libthread_db_loaded() else ())
+
+                # Using native byte ordering is only correct here because the libthread_db library
+                # won't be available when cross-platform debugging.
+                fmt = "=Q"
+
+                for thread in all_threads:
+                    if (thread_id, ) == struct.unpack_from(fmt, memoryview(thread.handle())):
+                        thread_name = f', "{thread.name}"' if thread.name else ""
+                        thread_id_str = (
+                            f"{hex(thread_id)} (GDB Id: thread {thread.num}{thread_name})")
+                        break
+                else:
+                    thread_id_str = hex(thread_id)
+
+                # gdb.Value.__str__() returns a Python string according to how the value would be
+                # **printed** by GDB. We therefore yield `thread_id_str` directly rather than
+                # gdb.Value(thread_id_str) to have the string text displayed verbatim.
+                yield ("locker._threadId", thread_id_str)
+
+            yield ("locker._debugInfo", locker["_debugInfo"])
+
+
 # We don't have to_string() or children() defined on _ResourceIdFactoryPrinter right now. Until we
 # have a sense of how else we might want to use the ResourceIdFactory in GDB pretty printers, it is
 # probably best to mark the type as being internal to this module.
@@ -572,6 +635,7 @@ def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) 
     pretty_printer.add_printer("mongo::LockManager", "^mongo::LockManager$", LockManagerPrinter)
     pretty_printer.add_printer("mongo::LockRequestList", "^mongo::LockRequestList$",
                                LockRequestListPrinter)
+    pretty_printer.add_printer("mongo::LockRequest", "^mongo::LockRequest$", LockRequestPrinter)
     pretty_printer.add_printer("mongo::ResourceId", "^mongo::ResourceId$", ResourceIdPrinter)
     pretty_printer.add_printer("mongo::ResourceType", "^mongo::ResourceType$", ResourceTypePrinter)
     pretty_printer.add_printer("mongo::ResourceGlobalId", "^mongo::ResourceGlobalId$",
