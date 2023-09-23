@@ -27,6 +27,7 @@ from gdbmongo import (abseil_printers, aligned_printer, boost_printers, bsonmisc
                       objectid_printer, static_immortal_printer, status_printer,
                       string_data_printer, thread_name_printer, timestamp_printer, uuid_printer)
 from gdbmongo.detect_toolchain import ToolchainVersionDetector
+from gdbmongo.gdbutil import gdb_is_libthread_db_loaded
 from gdbmongo.printer_protocol import SupportsChildren, SupportsToString
 from gdbmongo.stdlib_printers_loader import resolve_import
 
@@ -51,6 +52,13 @@ def _set_thread_names(all_threads: typing.Tuple[gdb.InferiorThread, ...], /) -> 
     mongo::(anonymous namespace)::ThreadNameInfo thread-local variable.
     """
     assert all_threads, "No threads. Is a program running? Is a core dump loaded?"
+
+    if not gdb_is_libthread_db_loaded():
+        warnings.warn(
+            "libthread_db library is not available. Is a core dump being debugged for a platform"
+            " different from its host? Output from the `info threads` command will be limited.")
+        return
+
     original_thread = gdb.selected_thread()
     original_frame = gdb.selected_frame()
 

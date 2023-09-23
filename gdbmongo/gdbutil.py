@@ -45,3 +45,20 @@ def gdb_resolve_type(typ: gdb.Type, /) -> gdb.Type:
     typename = typ.tag if typ.tag is not None else typ.name
     assert typename is not None
     return gdb.lookup_type(typename)
+
+
+def gdb_is_libthread_db_loaded() -> bool:
+    """Return True if the libthread_db library is initialized, and return False otherwise.
+
+    Thread debugging in GDB is not available when either (a) the libthread_db library is not found
+    or (b) when the found version is not compatible with the libpthread library. Only when thread
+    debugging is available can GDB inspect thread-local variables, for example.
+    """
+    try:
+        gdb.execute("maintenance check libthread-db", to_string=True)
+        return True
+    except gdb.error as err:
+        if err.args[0] != "No libthread_db loaded":
+            raise
+
+        return False
