@@ -137,7 +137,7 @@ class MongoDecimal128(ctypes.Structure):
     .. code-block:: python
 
         objdata = gdb.selected_inferior().read_memory(self.val["_objdata"], objsize)
-        decimal_data = MongoTimestamp.unpack_from(objdata)
+        decimal_data = MongoDecimal128.unpack_from(objdata)
         yield (f"{i}", decimal_data.to_value())
     """
 
