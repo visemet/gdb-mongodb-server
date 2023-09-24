@@ -392,6 +392,9 @@ class LockRequestPrinter(SupportsChildren):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::LockRequest."""
 
+    _cached_threads: typing.ClassVar[typing.Optional[typing.Dict[int, gdb.InferiorThread]]] = None
+    """Mapping from the pthread_t address (std::thread::id) to the associated gdb.InferiorThread."""
+
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
@@ -424,28 +427,19 @@ class LockRequestPrinter(SupportsChildren):
             if (locker_impl_type := gdb.lookup_type("mongo::LockerImpl")) == locker.dynamic_type:
                 thread_id = int(locker.cast(locker_impl_type)["_threadId"]["_M_thread"])
 
-                # gdb.InferiorThread.handle() raises a RuntimeError when the libthread_db library is
-                # not available. In this situation, the pthread_t address (std::thread::id) cannot
-                # be known for the gdb.InferiorThread. We therefore skip iterating over the threads
-                # when the libthread_db library is not available.
-                all_threads = (gdb.selected_inferior().threads()
-                               if gdb_is_libthread_db_loaded() else ())
+                self._populate_cached_threads()
+                assert self._cached_threads is not None
 
-                # Using native byte ordering is only correct here because the libthread_db library
-                # won't be available when cross-platform debugging.
-                fmt = "=Q"
-
-                for thread in all_threads:
-                    if (thread_id, ) == struct.unpack_from(fmt, memoryview(thread.handle())):
-                        thread_name = f', "{thread.name}"' if thread.name else ""
-                        thread_id_str = (
-                            f"{hex(thread_id)} (GDB Id: thread {thread.num}{thread_name})")
-                        break
+                if (thread := self._cached_threads.get(thread_id)) is not None:
+                    thread_name = f', "{thread.name}"' if thread.name else ""
+                    thread_id_str = f"{hex(thread_id)} (GDB Id: thread {thread.num}{thread_name})"
+                elif thread_id == 0:
+                    thread_id_str = "No active thread (likely a transaction)"
                 else:
-                    if thread_id == 0:
-                        thread_id_str = "No active thread (likely a transaction)"
-                    else:
-                        thread_id_str = hex(thread_id)
+                    # Only if the libthread_db library is not available would we expect to not find
+                    # the thread's ID.
+                    assert not self._cached_threads, f"Failed to identify thread {hex(thread_id)}"
+                    thread_id_str = hex(thread_id)
 
                 # gdb.Value.__str__() returns a Python string according to how the value would be
                 # **printed** by GDB. We therefore yield `thread_id_str` directly rather than
@@ -453,6 +447,32 @@ class LockRequestPrinter(SupportsChildren):
                 yield ("locker._threadId", thread_id_str)
 
             yield ("locker._debugInfo", locker["_debugInfo"])
+
+    @classmethod
+    def _populate_cached_threads(cls) -> None:
+        if cls._cached_threads is not None:
+            # The cache has already been populated.
+            return
+
+        if not gdb_is_libthread_db_loaded():
+            # gdb.InferiorThread.handle() raises a RuntimeError when the libthread_db library is not
+            # available. In this situation, the pthread_t address (std::thread::id) cannot be known
+            # for the gdb.InferiorThread. We return early and leave `_cached_threads` as an empty
+            # dictionary to skip attempting to populate the cache later.
+            cls._cached_threads = {}
+            return
+
+        # Using native byte ordering is only correct here because the libthread_db library won't be
+        # available when cross-platform debugging.
+        fmt = "=Q"
+        cached_threads: typing.Dict[int, gdb.InferiorThread] = {}
+
+        for thread in gdb.selected_inferior().threads():
+            (thread_id, ) = struct.unpack_from(fmt, memoryview(thread.handle()))
+            assert isinstance(thread_id, int)
+            cached_threads[thread_id] = thread
+
+        cls._cached_threads = cached_threads
 
 
 # We don't have to_string() or children() defined on _ResourceIdFactoryPrinter right now. Until we
