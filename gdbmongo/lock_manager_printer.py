@@ -410,12 +410,16 @@ class LockRequestPrinter(SupportsChildren):
                 continue
 
             data_member = self.val[field.name]
-            yield (field.name, data_member)
 
             if field.name != "locker":
+                yield (field.name, data_member)
                 continue
 
             locker = data_member.dereference()
+            # We augment the field name displayed for the mongo::LockRequest::locker member to
+            # include its type. GDB would otherwise only display the mongo::Locker* address.
+            yield (f"locker = ({locker.dynamic_type.pointer()}) {hex(int(locker.address))}",
+                   data_member)
 
             if (locker_impl_type := gdb.lookup_type("mongo::LockerImpl")) == locker.dynamic_type:
                 thread_id = int(locker.cast(locker_impl_type)["_threadId"]["_M_thread"])
