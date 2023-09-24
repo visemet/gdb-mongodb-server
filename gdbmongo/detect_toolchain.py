@@ -19,6 +19,7 @@ import os
 import pathlib
 import re
 import shlex
+import shutil
 import subprocess
 import tempfile
 import typing
@@ -38,8 +39,6 @@ StrOrBytesPath = typing.Union[str, bytes, os.PathLike]
 class ToolchainVersionDetector:
     """Detect info about the MongoDB toolchain used to compile an executable."""
 
-    objcopy = "/opt/mongodbtoolchain/v3/bin/objcopy"
-
     gcc_version_regexp = re.compile(rb"(?:^|\x00)(GCC: \(GNU\) \d+\.\d+\.\d+)(?:\x00|$)")
     clang_version_regexp = re.compile(rb"(?:^|\x00)(MongoDB clang version \d+\.\d+\.\d+)")
 
@@ -48,27 +47,42 @@ class ToolchainVersionDetector:
         self.executable = executable
 
     @classmethod
+    def locate_objcopy(cls) -> typing.Optional[str]:
+        """Return the location of an objcopy executable from the MongoDB toolchain."""
+        # The objcopy executable in the MongoDB v4 toolchain supports reading binaries which were
+        # compiled for a different platform. We prefer using it for this reason. However, not all
+        # Evergreen distros have the MongoDB v4 toolchain available and so we also allow falling
+        # back to the MongoDB v3 toolchain.
+        return shutil.which(
+            "objcopy", path=os.pathsep.join(
+                ("/opt/mongodbtoolchain/v4/bin/", "/opt/mongodbtoolchain/v3/bin/")))
+
+    @classmethod
     def readelf(cls, executable: StrOrBytesPath, /) -> bytes:
         """Return the ELF .comment section of the executable.
 
         The ELF .comment section contains information about which compiler(s) were used in building
         the executable.
         """
+        if (objcopy := cls.locate_objcopy()) is None:
+            warnings.warn(
+                "Unable to locate a known objcopy executable. Is the MongoDB toolchain installed?")
+            return b""
+
         with tempfile.NamedTemporaryFile() as output_file:
             # objcopy overwrites the input executable when only given one positional argument.
             # /dev/null is specified as the second positional argument to simultaneously prevent the
             # executable file from being overwritten and to discard the generated copy.
             result = subprocess.run([
-                cls.objcopy, "--dump-section", f".comment={str(output_file.name)}", executable,
+                objcopy, "--dump-section", f".comment={str(output_file.name)}", executable,
                 "/dev/null"
             ], capture_output=True, check=False, encoding="utf-8", text=True)
 
             if result.returncode == 0:
                 return output_file.read()
 
-        warnings.warn(
-            f"Unable to detect the compiler version in {shlex.quote(str(executable))}. Is the"
-            f" MongoDB toolchain installed? {result.stderr}")
+        warnings.warn(f"Unable to detect the compiler version in {shlex.quote(str(executable))}."
+                      f" {result.stderr}")
         return b""
 
     @classmethod
