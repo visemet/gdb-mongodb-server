@@ -62,3 +62,21 @@ def gdb_is_libthread_db_loaded() -> bool:
             raise
 
         return False
+
+
+def gdb_are_debug_symbols_loaded() -> bool:
+    """Return False if debug symbols are not present, and return True otherwise.
+
+    This function is not guaranteed to return False when debug symbols only exist for some of the
+    program's shared libraries. Instead, this function returning False should imply to the caller
+    that looking up symbols, types, values, etc. in GDB is unlikely to succeed and would preferably
+    be avoided.
+    """
+    try:
+        ret = gdb.execute("info address main", to_string=True)
+        return not ret.endswith(" in a file compiled without debugging.\n")
+    except gdb.error as err:
+        if not err.args[0].startswith("No symbol "):
+            raise
+
+        return False
