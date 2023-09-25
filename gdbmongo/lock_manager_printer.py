@@ -25,7 +25,6 @@ core file can be displayed with the following commands:
 """
 
 import abc
-import functools
 import struct
 import typing
 
@@ -203,7 +202,7 @@ class _ResourceCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGett
         namespaces = [nss for (_, nss) in AbslFlatHashSetPrinter(nss_set).children()]
         return StdStringPrinter(namespaces[0]).string() if len(namespaces) == 1 else None
 
-    @functools.cached_property
+    @property
     def resource_mutex_labels(self) -> gdb.Value:
         """Get the vector of resource mutex labels."""
         # The ResourceCatalog::_mutexResourceIdLabels member was added as part of SERVER-77227.
@@ -588,7 +587,7 @@ class ResourceTypePrinter(SupportsToString):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::ResourceType."""
 
-    @functools.cached_property
+    @property
     def resource_type_names(self) -> typing.Tuple[str, ...]:
         # We duplicate the contents of mongo::ResourceTypeNames[] here for a couple reasons:
         #
@@ -622,7 +621,7 @@ class ResourceGlobalIdPrinter(SupportsToString):
     # pylint: disable=missing-function-docstring
     """Pretty-printer for mongo::ResourceGlobalId."""
 
-    @functools.cached_property
+    @property
     def resource_global_id_names(self) -> typing.Tuple[str, ...]:
         # We duplicate the contents of mongo::ResourceGlobalIdNames[] for the same reasons described
         # above in ResourceTypePrinter.
