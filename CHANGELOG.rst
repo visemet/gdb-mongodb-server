@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.13.0 (2023-09-29)
+-------------------
+
+* Include thread's name and number in output for LockManager dump.
+* Fix detecting compiler version when cross-platform debugging.
+
 0.12.0 (2023-09-22)
 -------------------
 
