@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.14.0 (2023-09-30)
+-------------------
+
+* Include OperationContext* in output for LockManager dump.
+
 0.13.0 (2023-09-29)
 -------------------
 

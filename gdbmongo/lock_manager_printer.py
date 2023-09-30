@@ -394,6 +394,9 @@ class LockRequestPrinter(SupportsChildren):
     _cached_threads: typing.ClassVar[typing.Optional[typing.Dict[int, gdb.InferiorThread]]] = None
     """Mapping from the pthread_t address (std::thread::id) to the associated gdb.InferiorThread."""
 
+    _cached_operation_contexts: typing.ClassVar[typing.Optional[typing.Dict[int, gdb.Value]]] = None
+    """Mapping from the mongo::Locker* address to the associated mongo::OperationContext*."""
+
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
 
@@ -447,6 +450,18 @@ class LockRequestPrinter(SupportsChildren):
 
             yield ("locker._debugInfo", locker["_debugInfo"])
 
+            self._populate_cached_operation_contexts()
+            assert self._cached_operation_contexts is not None
+
+            if (operation_context :=
+                    self._cached_operation_contexts.get(int(locker.address))) is not None:
+                # We augment the field name displayed for the mongo::LockRequest::$_opCtx
+                # pseudo-member to include its type. GDB would otherwise only display the
+                # mongo::OperationContext* address. The '$' character included in the field name was
+                # intentionally chosen as invalid C++ and GDB syntax to avoid any naming collisions.
+                yield (f"locker.$_opCtx = ({operation_context.type}) {hex(int(operation_context))}",
+                       operation_context)
+
     @classmethod
     def _populate_cached_threads(cls) -> None:
         if cls._cached_threads is not None:
@@ -472,6 +487,33 @@ class LockRequestPrinter(SupportsChildren):
             cached_threads[thread_id] = thread
 
         cls._cached_threads = cached_threads
+
+    @classmethod
+    def _populate_cached_operation_contexts(cls) -> None:
+        if cls._cached_operation_contexts is not None:
+            # The cache has already been populated.
+            return
+
+        service_context = gdb_lookup_value("mongo::(anonymous namespace)::globalServiceContext")
+        assert service_context is not None
+
+        cached_operation_contexts: typing.Dict[int, gdb.Value] = {}
+
+        for (_, client) in AbslFlatHashSetPrinter(service_context["_clients"]).children():
+            if (operation_context := client["_opCtx"]) != 0:
+                locker = operation_context["_locker"]
+
+                # UniquePtrGetWorker.__call__(self, obj) is implemented by first calling
+                # obj.dereference() on the supplied argument. This behavior for UniquePtrGetWorker
+                # was introduced by https://gcc.gnu.org/bugzilla/show_bug.cgi?id=77990 and is
+                # therefore present in all versions of the libstdc++ pretty printers for the MongoDB
+                # toolchain. We pass in `obj.address` to UniquePtrGetWorker to cancel out the
+                # obj.dereference() call.
+                xmethod_worker = stdlib_xmethods.UniquePtrMethodsMatcher().match(locker.type, "get")
+                if (locker_address := xmethod_worker(locker.address)) != 0:
+                    cached_operation_contexts[int(locker_address)] = operation_context
+
+        cls._cached_operation_contexts = cached_operation_contexts
 
 
 # We don't have to_string() or children() defined on _ResourceIdFactoryPrinter right now. Until we
