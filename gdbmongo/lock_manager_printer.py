@@ -436,7 +436,7 @@ class LockRequestPrinter(SupportsChildren):
                     thread_name = f', "{thread.name}"' if thread.name else ""
                     thread_id_str = f"{hex(thread_id)} (GDB Id: thread {thread.num}{thread_name})"
                 elif thread_id == 0:
-                    thread_id_str = "No active thread (likely a transaction)"
+                    thread_id_str = "No active thread (likely an idle transaction)"
                 else:
                     # Only if the libthread_db library is not available would we expect to not find
                     # the thread's ID.
