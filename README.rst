@@ -71,8 +71,12 @@ already installed.
     end
 
 If you don't plan to use the GDB pretty printers defined in the
-mongodb/mongo repository then you may want to consider registering some
-of the other printers defined by the *gdbmongo* package.
+mongodb/mongo repository then you may want to consider enabling some of
+the other printers defined by the *gdbmongo* package by default. Each of
+the gdbmongo-\* pretty printer collections can be still enabled later on
+within GDB. For example, the gdbmongo-mongo-extras pretty printer
+collection can be enabled with the
+``enable pretty-printer global gdbmongo-mongo-extras`` command.
 
 .. pull-quote::
 
