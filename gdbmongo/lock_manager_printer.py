@@ -206,7 +206,7 @@ class _ResourceCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGett
     def resource_mutex_labels(self) -> gdb.Value:
         """Get the vector of resource mutex labels."""
         # The ResourceCatalog::_mutexResourceIdLabels member was added as part of SERVER-77227.
-        # https://github.com/mongodb/mongo/blob/r7.1.0-alpha0/src/mongo/db/concurrency/resource_catalog.h#L81
+        # https://github.com/mongodb/mongo/blob/r7.1.0/src/mongo/db/concurrency/resource_catalog.h#L81
         # We expose the instance attribute lazily here rather than defining it in __init__() because
         # the member won't always exist.
         return self.val["_mutexResourceIdLabels"]
@@ -240,7 +240,7 @@ class _ResourceCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGett
         """Return a _ResourceCatalogPrinter from the function static ResourceCatalog."""
         # The global ResourceCatalog was previously a decoration on the global ServiceContext before
         # becoming a function static in SERVER-77227.
-        # https://github.com/mongodb/mongo/blob/r7.1.0-alpha0/src/mongo/db/concurrency/resource_catalog.cpp#L52
+        # https://github.com/mongodb/mongo/blob/r7.1.0/src/mongo/db/concurrency/resource_catalog.cpp#L52
         if (resource_catalog :=
                 gdb_lookup_value("mongo::ResourceCatalog::get()::resourceCatalog")) is not None:
             return cls(StaticImmortalPrinter(resource_catalog).value())
@@ -608,7 +608,7 @@ class ResourceIdPrinter(SupportsToString):
                                   gdb_lookup_value("mongo::RESOURCE_DDL_COLLECTION")):
             # Names for the ScopedDatabaseDDLLock and ScopedCollectionDDLLock resources were added
             # to the ResourceCatalog as part of SERVER-77512.
-            # https://github.com/mongodb/mongo/blob/r7.1.0-alpha0/src/mongo/db/concurrency/resource_catalog.cpp#L66-L69
+            # https://github.com/mongodb/mongo/blob/r7.1.0/src/mongo/db/concurrency/resource_catalog.cpp#L66-L69
             resource_catalog = _ResourceCatalogPrinter.from_global()
 
             if (resource_name := resource_catalog.lookup_resource_name(self.val)) is not None:

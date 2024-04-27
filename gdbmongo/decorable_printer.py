@@ -210,9 +210,12 @@ class DecorationBufferPrinter(DecorationMemoryPrinterBase):
         try:
             # The mongo::decorable_detail::RegistryEntry class with its private, underscore-prefixed
             # members replaced the mongo::decorable_detail::Registry::Entry struct as part of
-            # SERVER-77825. The mongo::decorable_detail::Registry::Entry struct had public,
-            # non-prefixed members.
-            # https://github.com/mongodb/mongo/blob/r7.1.0-rc0/src/mongo/util/decorable.h#L445-L446
+            # SERVER-77825 in MongoDB 7.1. The mongo::decorable_detail::Registry::Entry struct had
+            # public, non-prefixed members.
+            # https://github.com/mongodb/mongo/blob/r7.1.0/src/mongo/util/decorable.h#L445-L446
+            #
+            # The changes from SERVER-77825 were then reverted under SERVER-81848 in MongoDB 8.0.
+            # https://github.com/mongodb/mongo/blob/r8.0.0-rc3/src/mongo/util/decorable.h#L150-L151
             gdb.lookup_type("mongo::decorable_detail::RegistryEntry")
         except gdb.error as err:
             if not err.args[0].startswith("No type named "):
@@ -267,7 +270,7 @@ def DecorationIterator(val: gdb.Value) -> typing.Iterator[gdb.Value]:
     """Return a generator of every decoration in the given mongo::Decorable<T>."""
     try:
         # The memory layout for the Decorable<T> type was changed as part of SERVER-78390.
-        # https://github.com/mongodb/mongo/blob/r7.1.0-rc0/src/mongo/util/decorable.h#L770
+        # https://github.com/mongodb/mongo/blob/r7.1.0/src/mongo/util/decorable.h#L770
         # https://github.com/mongodb/mongo/blob/r7.0.0/src/mongo/util/decorable.h#L154
         gdb.lookup_type("mongo::decorable_detail::Registry")
     except gdb.error as err:
