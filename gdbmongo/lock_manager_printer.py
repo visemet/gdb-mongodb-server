@@ -426,7 +426,17 @@ class LockRequestPrinter(SupportsChildren):
             yield (f"locker = ({locker.dynamic_type.pointer()}) {hex(int(locker.address))}",
                    data_member)
 
-            if (locker_impl_type := gdb.lookup_type("mongo::LockerImpl")) == locker.dynamic_type:
+            try:
+                # The mongo::LockerImpl type was consolidated with its mongo::Locker base class as
+                # part of SERVER-84753 in MongoDB 7.3.
+                locker_impl_type = gdb.lookup_type("mongo::LockerImpl")
+            except gdb.error as err:
+                if not err.args[0].startswith("No type named "):
+                    raise
+
+                locker_impl_type = locker.type
+
+            if locker_impl_type == locker.dynamic_type:
                 thread_id = int(locker.cast(locker_impl_type)["_threadId"]["_M_thread"])
 
                 self._populate_cached_threads()
