@@ -677,11 +677,19 @@ class ResourceGlobalIdPrinter(SupportsToString):
     def resource_global_id_names(self) -> typing.Tuple[str, ...]:
         # We duplicate the contents of mongo::ResourceGlobalIdNames[] for the same reasons described
         # above in ResourceTypePrinter.
+
+        # The parallel batch writer mutex was removed in MongoDB 7.1 as part of SERVER-38341.
         pbwm_resource_name = ("ParallelBatchWriterMode", ) if gdb_lookup_value(
             "mongo::resourceIdParallelBatchWriterMode") is not None else ()
 
-        return (pbwm_resource_name +
-                ("FeatureCompatibilityVersion", "ReplicationStateTransition", "Global"))
+        # The feature compatibility version full transition lock was replaced with an equivalent
+        # barrier applied to only transaction operations in MongoDB 7.3 as part of SERVER-66340.
+        txn_barrier_resource_name = ("MultiDocumentTransactionsBarrier", ) if gdb_lookup_value(
+            "mongo::resourceIdMultiDocumentTransactionsBarrier") is not None else (
+                "FeatureCompatibilityVersion", )
+
+        return (pbwm_resource_name + txn_barrier_resource_name +
+                ("ReplicationStateTransition", "Global"))
 
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
