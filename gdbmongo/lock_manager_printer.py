@@ -32,7 +32,7 @@ import gdb
 
 from gdbmongo import stdlib_printers, stdlib_xmethods
 from gdbmongo.abseil_printers import (AbslFlatHashMapPrinter, AbslNodeHashMapPrinter,
-                                      AbslFlatHashSetPrinter)
+                                      AbslFlatHashSetPrinter, AbslNodeHashSetPrinter)
 from gdbmongo.decorable_printer import DecorationIterator
 from gdbmongo.gdbutil import gdb_is_libthread_db_loaded, gdb_lookup_value
 from gdbmongo.printer_protocol import (PrettyPrinterProtocol, SupportsChildren, SupportsDisplayHint,
@@ -386,6 +386,22 @@ class LockRequestListPrinter(PrettyPrinterProtocol, SupportsDisplayHint):
         return self.val["_front"] != 0
 
 
+# pylint: disable-next=invalid-name
+def ServiceContextClientsListIterator(service_context: gdb.Value, /) -> typing.Iterator[gdb.Value]:
+    """Return a generator of every mongo::Client* in the given mongo::ServiceContext."""
+    try:
+        gdb.lookup_type("mongo::ServiceContext::ClientMap")
+    except gdb.error as err:
+        if not err.args[0].startswith("No type named "):
+            raise
+
+        for (_, client) in AbslNodeHashSetPrinter(service_context["_clients"]).children():
+            yield client
+    else:
+        for (client, _) in AbslNodeHashMapPrinter(service_context["_clients"]).items():
+            yield client
+
+
 # pylint: disable-next=too-few-public-methods
 class LockRequestPrinter(SupportsChildren):
     # pylint: disable=missing-function-docstring
@@ -509,7 +525,7 @@ class LockRequestPrinter(SupportsChildren):
 
         cached_operation_contexts: typing.Dict[int, gdb.Value] = {}
 
-        for (_, client) in AbslFlatHashSetPrinter(service_context["_clients"]).children():
+        for client in ServiceContextClientsListIterator(service_context):
             if (operation_context := client["_opCtx"]) != 0:
                 locker = operation_context["_locker"]
 

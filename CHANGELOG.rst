@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.15.0 (2024-04-29)
+-------------------
+
+* Support dumping LockManager from core dump of MongoDB 8.0.
+
 0.14.0 (2023-09-30)
 -------------------
 
