@@ -24,6 +24,7 @@ import typing
 import gdb
 
 from gdbmongo import stdlib_printers
+from gdbmongo.gdbutil import gdb_lookup_value
 from gdbmongo.printer_protocol import LazyString, SupportsDisplayHint, SupportsToString
 
 
@@ -93,8 +94,73 @@ class c_size_t(ctypes.c_size_t):
 
 
 @dataclasses.dataclass
-class MongoStringData(ctypes.Structure):
+class MongoStringDataLayoutStdStringView(ctypes.Structure):
     """Structure with a memory layout compatible with that of mongo::StringData.
+
+    It corresponds to the memory layout after mongo::StringData became a thin wrapper over
+    std::string_view as part of SERVER-82604 in MongoDB 7.3. It is equivalent to the following
+    C struct:
+
+    .. code-block:: c
+
+        struct {
+            size_t size;
+            char* data;
+        };
+    """
+
+    size: c_size_t
+    data: c_char_p
+
+
+setattr(MongoStringDataLayoutStdStringView, "_fields_",
+        [(field.name, field.type)
+         for field in dataclasses.fields(MongoStringDataLayoutStdStringView)])
+
+
+@dataclasses.dataclass
+class MongoStringDataLayoutPre73(ctypes.Structure):
+    """Structure with a memory layout compatible with that of mongo::StringData.
+
+    It corresponds to the memory layout prior to mongo::StringData being made a thin wrapper over
+    std::string_view as part of SERVER-82604 in MongoDB 7.3. It is equivalent to the following
+    C struct:
+
+    .. code-block:: c
+
+        struct {
+            char* data;
+            size_t size;
+        };
+    """
+
+    data: c_char_p
+    size: c_size_t
+
+
+setattr(MongoStringDataLayoutPre73, "_fields_",
+        [(field.name, field.type) for field in dataclasses.fields(MongoStringDataLayoutPre73)])
+
+
+class MongoStringData(ctypes.Union):
+    """Object with a memory layout compatible with that of mongo::StringData.
+
+    It is implemented as a ctypes.Union to accommodate the memory layout of mongo::StringData
+    changing between MongoDB Server versions. It is equivalent to the following C union:
+
+    .. code-block:: c
+
+        union {
+            struct {
+                size_t size;
+                char* data;
+            } layout_string_view;
+
+            struct {
+                char* data;
+                size_t size;
+            } layout_pre73;
+        };
 
     This class is useful for constructing gdb.Value objects of type mongo::StringData out of
     selected portions of a buffer read with gdb.Inferior.read_memory(). These synthetic gdb.Values
@@ -107,14 +173,24 @@ class MongoStringData(ctypes.Structure):
         yield (f"{i}", string_data.to_value())
     """
 
-    data: c_char_p
-    size: c_size_t
+    layout_string_view: MongoStringDataLayoutStdStringView
+    layout_pre73: MongoStringDataLayoutPre73
+
+    # dataclasses.dataclass doesn't appear to be compatible with ctypes.Union. We enumerate
+    # `MongoStringData._fields_` explicitly instead of relying on the type annotations.
+    _fields_ = [("layout_string_view", MongoStringDataLayoutStdStringView),
+                ("layout_pre73", MongoStringDataLayoutPre73)]
 
     def __init__(self, *, data: int, size: int) -> None:
         if size < 0:
             raise ValueError("size argument must be a non-negative integer")
 
-        super().__init__(data=c_char_p(data), size=c_size_t(size))
+        if StringDataPrinter.is_wrapping_std_string_view():
+            super().__init__(layout_string_view=MongoStringDataLayoutStdStringView(
+                data=c_char_p(data), size=c_size_t(size)))
+        else:
+            super().__init__(
+                layout_pre73=MongoStringDataLayoutPre73(data=c_char_p(data), size=c_size_t(size)))
 
     @classmethod
     def from_cstring(cls, val: gdb.Value, /, *, maxsize: int) -> "MongoStringData":
@@ -132,16 +208,25 @@ class MongoStringData(ctypes.Structure):
         """Read a length-prefixed string starting from the beginning of the given buffer."""
         fmt = "<i"
         (size, ) = struct.unpack_from(fmt, view)
+
         return cls(data=int(val + struct.calcsize(fmt)), size=size)
+
+    @property
+    def data(self) -> c_char_p:
+        """Return the pointer to the first character in the string."""
+        return (self.layout_string_view.data
+                if StringDataPrinter.is_wrapping_std_string_view() else self.layout_pre73.data)
+
+    @property
+    def size(self) -> c_size_t:
+        """Return the number of characters in the string."""
+        return (self.layout_string_view.size
+                if StringDataPrinter.is_wrapping_std_string_view() else self.layout_pre73.size)
 
     def to_value(self) -> gdb.Value:
         """Convert the structure to a gdb.Value of type mongo::StringData."""
         typ = gdb.lookup_type("mongo::StringData")
         return gdb.Value(memoryview(self), typ)
-
-
-setattr(MongoStringData, "_fields_",
-        [(field.name, field.type) for field in dataclasses.fields(MongoStringData)])
 
 
 class StringDataPrinter(SupportsDisplayHint, ValueAsPythonStringMixin):
@@ -150,15 +235,22 @@ class StringDataPrinter(SupportsDisplayHint, ValueAsPythonStringMixin):
 
     def __init__(self, val: gdb.Value, /) -> None:
         self.val = val
-        self.size = val["_size"]
-        self.data = val["_data"]
 
     @staticmethod
     def display_hint() -> typing.Literal["string"]:
         return "string"
 
-    def to_string(self) -> LazyString:
-        return self.data.lazy_string(length=int(self.size))
+    def to_string(self) -> typing.Union[gdb.Value, LazyString]:
+        if StringDataPrinter.is_wrapping_std_string_view():
+            return self.val["_sv"]
+
+        return self.val["_data"].lazy_string(length=int(self.val["_size"]))
+
+    @staticmethod
+    def is_wrapping_std_string_view() -> bool:
+        # The StringData class was changed to be a thin wrapper over std::string_view as part of
+        # SERVER-82604 in MongoDB 7.3.
+        return gdb_lookup_value("mongo::StringData::npos") is not None
 
 
 def add_printers(pretty_printer: gdb.printing.RegexpCollectionPrettyPrinter, /) -> None:

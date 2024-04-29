@@ -5,6 +5,7 @@ Changelog
 -------------------
 
 * Support dumping LockManager from core dump of MongoDB 8.0.
+* Fix mongo::StringData pretty printer and mongo::BSONObj pretty printer which consumes it.
 
 0.14.0 (2023-09-30)
 -------------------
