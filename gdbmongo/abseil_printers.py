@@ -45,7 +45,25 @@ class _AbslRawHashSetCommonFieldsPrinter:
             size = container["size_"]
             slots = container["slots_"]
         else:
-            settings = container["settings_"]["value"]
+            try:
+                common_fields_storage_type = gdb.lookup_type(
+                    "absl::lts_20230802::container_internal::internal_compressed_tuple::Storage"
+                    "<absl::lts_20230802::container_internal::CommonFields, 0, false>")
+            except gdb.error as err:
+                if not err.args[0].startswith("No type named "):
+                    raise
+
+                # Abseil uses `inline namespace lts_20230802 { ... }` for its container types. This
+                # can inhibit GDB from resolving type names when the inline namespace appears within
+                # a template argument.
+                common_fields_storage_type = gdb.lookup_type(
+                    "absl::lts_20230802::container_internal::internal_compressed_tuple::Storage"
+                    "<absl::container_internal::CommonFields, 0, false>")
+
+            # The Hash, Eq, or Alloc functors may not be zero-sized objects.
+            # mongo::LogicalSessionIdHash is one such example. An explicit cast is needed to
+            # disambiguate which `value` member variable of the CompressedTuple is to be accessed.
+            settings = container["settings_"].cast(common_fields_storage_type)["value"]
             control = settings["control_"]
 
             # Sampling is disabled and so HashtablezInfoHandle{} is a zero-sized object. We can
