@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.15.1 (2024-05-19)
+-------------------
+
+* Fix detecting libstdc++ version for Clang sanitizer builds.
+
 0.15.0 (2024-04-29)
 -------------------
 

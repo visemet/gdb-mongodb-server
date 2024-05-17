@@ -46,7 +46,7 @@ from gdbmongo.detect_toolchain import ToolchainInfo, ToolchainVersionDetector
     ))
 def test_parse_gcc_version(raw_elf_section: bytes, expected: str) -> None:
     """Check the extracted GCC compiler version from a sample ELF .comment section."""
-    assert ToolchainVersionDetector.parse_gcc_version(raw_elf_section, executable="") == expected
+    assert ToolchainVersionDetector.parse_gcc_version(raw_elf_section) == expected
 
 
 @pytest.mark.parametrize(
@@ -112,6 +112,12 @@ def test_parse_clang_version(raw_elf_section: bytes, expected: typing.Optional[s
             ToolchainInfo("MongoDB clang version 12.0.1",
                           pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
             id="v4-clang"),
+        pytest.param(
+            # pylint: disable-next=line-too-long
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/linux-debug-aubsan-compile-required/mongodb_mongo_master_a706832256a8b8af7dc955f9e4a6ab36442ca26f/binaries/mongo-63671.tgz",
+            ToolchainInfo("MongoDB clang version 12.0.1",
+                          pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
+            id="v4-clang-compiler-rt"),
     ))
 def test_detected_toolchain_from_real_executable(url: str, expected: ToolchainInfo) -> None:
     """Check the toolchain info for a real mongod executable."""

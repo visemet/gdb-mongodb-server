@@ -42,6 +42,9 @@ class ToolchainVersionDetector:
     gcc_version_regexp = re.compile(rb"(?:^|\x00)(GCC: \(GNU\) \d+\.\d+\.\d+)(?:\x00|$)")
     clang_version_regexp = re.compile(rb"(?:^|\x00)(MongoDB clang version \d+\.\d+\.\d+)")
 
+    libstdcxx_python_home_v3 = pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")
+    libstdcxx_python_home_v4 = pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")
+
     def __init__(self, executable: StrOrBytesPath, /):
         """Initialize the ToolchainVersionDetector with the pathname of an executable."""
         self.executable = executable
@@ -86,12 +89,7 @@ class ToolchainVersionDetector:
         return b""
 
     @classmethod
-    def parse_gcc_version(
-        cls,
-        raw_elf_section: bytes,
-        /,
-        executable: StrOrBytesPath,
-    ) -> typing.Optional[str]:
+    def parse_gcc_version(cls, raw_elf_section: bytes, /) -> typing.Optional[str]:
         """Extract the GCC compiler version from the ELF .comment section text.
 
         It is expected for a GCC compiler version to be listed due to the use of libstdc++ in all
@@ -100,10 +98,6 @@ class ToolchainVersionDetector:
         if (match := cls.gcc_version_regexp.search(raw_elf_section)) is not None:
             return match.group(1).decode()
 
-        warnings.warn(
-            f"Unable to detect the compiler version in {shlex.quote(str(executable))}."
-            " The executable doesn't appear to have been compiled with libstdc++ based on its ELF"
-            f" .comment section: {raw_elf_section!r}")
         return None
 
     @classmethod
@@ -115,7 +109,8 @@ class ToolchainVersionDetector:
         return None
 
     @classmethod
-    def parse_libstdcxx_python_home(cls, gcc_version: str, /) -> typing.Optional[pathlib.Path]:
+    def parse_libstdcxx_python_home_from_gcc_version(cls, gcc_version: str,
+                                                     /) -> typing.Optional[pathlib.Path]:
         """Return the /opt/mongodbtoolchain/vN/share/gcc-X.Y.Z/python directory associated with a
         particular GCC compiler version.
         """
@@ -125,7 +120,7 @@ class ToolchainVersionDetector:
             # binaries compiled with any of those compiler versions because we expect the machine to
             # be running the latest version of the MongoDB toolchain, even when it is for inspecting
             # older binaries.
-            return pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")
+            return cls.libstdcxx_python_home_v3
 
         if gcc_version.endswith((" 11.2.0", " 11.3.0")):
             # The v4 toolchain was upgraded from GCC 11.2.0 to GCC 11.3.0 in BUILD-14919 prior to
@@ -133,7 +128,7 @@ class ToolchainVersionDetector:
             # compiled with any of those compiler versions because we expect the machine to be
             # running the latest version of the MongoDB toolchain, even when it is for inspecting
             # older binaries.
-            return pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")
+            return cls.libstdcxx_python_home_v4
 
         warnings.warn(
             "Unable to determine the location of the libstdc++ GDB pretty printers. Please file a"
@@ -141,20 +136,43 @@ class ToolchainVersionDetector:
             f"compiler version was {gcc_version}")
         return None
 
+    @classmethod
+    def parse_libstdcxx_python_home_from_clang_version(cls, clang_version: str,
+                                                       /) -> typing.Optional[pathlib.Path]:
+        """Return the /opt/mongodbtoolchain/vN/share/gcc-X.Y.Z/python directory associated with a
+        particular Clang compiler version.
+        """
+        if clang_version.endswith(" 7.0.1"):
+            return cls.libstdcxx_python_home_v3
+
+        if clang_version.endswith(" 12.0.1"):
+            return cls.libstdcxx_python_home_v4
+
+        warnings.warn(
+            "Unable to determine the location of the libstdc++ GDB pretty printers. Please file a"
+            " GitHub issue against https://github.com/visemet/gdb-mongodb-server and mention your "
+            f"compiler version was {clang_version}")
+        return None
+
     def detect(self) -> ToolchainInfo:
         """Detect info about the MongoDB toolchain used to compile an executable."""
         if not (raw_elf_section := self.readelf(self.executable)):
             return ToolchainInfo(None, None)
 
-        if (gcc_version := self.parse_gcc_version(raw_elf_section, self.executable)) is None:
-            return ToolchainInfo(None, None)
-
-        if (libstdcxx_python_home := self.parse_libstdcxx_python_home(gcc_version)) is None:
-            return ToolchainInfo(None, None)
-
         if (clang_version := self.parse_clang_version(raw_elf_section)) is not None:
             compiler = clang_version
-        else:
+            parse_libstdcxx_python_home = self.parse_libstdcxx_python_home_from_clang_version
+        elif (gcc_version := self.parse_gcc_version(raw_elf_section)) is not None:
             compiler = gcc_version
+            parse_libstdcxx_python_home = self.parse_libstdcxx_python_home_from_gcc_version
+        else:
+            warnings.warn(
+                f"Unable to detect the compiler version in {shlex.quote(str(self.executable))}."
+                " The executable doesn't appear to have been compiled with libstdc++ based on"
+                f" its ELF .comment section: {raw_elf_section!r}")
+            return ToolchainInfo(None, None)
+
+        if (libstdcxx_python_home := parse_libstdcxx_python_home(compiler)) is None:
+            return ToolchainInfo(None, None)
 
         return ToolchainInfo(compiler=compiler, libstdcxx_python_home=libstdcxx_python_home)
