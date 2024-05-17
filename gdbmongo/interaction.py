@@ -31,6 +31,15 @@ from gdbmongo.gdbutil import gdb_are_debug_symbols_loaded, gdb_is_libthread_db_l
 from gdbmongo.printer_protocol import SupportsChildren, SupportsToString
 from gdbmongo.stdlib_printers_loader import resolve_import
 
+# gdb.current_objfile() would very likely be None at the moment gdbmongo.register_printers() is
+# called. There also hasn't been a need to enable or disable specific pretty printers on a
+# per-program basis. This is because debugging a core file isn't compatible with debugging multiple
+# programs in a single GDB session. We therefore make the global registration of the pretty
+# printers which was already happening here explicit.
+#
+# pylint: disable-next=invalid-name
+_register_globally = None
+
 
 def _import_libstdcxx_printers(executable: str, /, *, register_libstdcxx_printers: bool) -> None:
     """Import the version of the libstdc++ GDB pretty printers corresponding to the version of the
@@ -44,7 +53,7 @@ def _import_libstdcxx_printers(executable: str, /, *, register_libstdcxx_printer
     register_module()
 
     if register_libstdcxx_printers:
-        module.register_libstdcxx_printers(gdb.current_objfile())
+        module.register_libstdcxx_printers(_register_globally)
 
 
 def _set_thread_names(all_threads: typing.Tuple[gdb.InferiorThread, ...], /) -> None:
@@ -109,17 +118,17 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
     pretty_printer_essentials = RegexpCollectionPrettyPrinter("gdbmongo-essentials")
     pretty_printer_essentials.enabled = essentials
     lock_manager_printer.add_printers(pretty_printer_essentials)
-    gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_essentials)
+    gdb.printing.register_pretty_printer(_register_globally, pretty_printer_essentials)
 
     pretty_printer_abseil = RegexpCollectionPrettyPrinter("gdbmongo-absl")
     pretty_printer_abseil.enabled = abseil
     abseil_printers.add_printers(pretty_printer_abseil)
-    gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_abseil)
+    gdb.printing.register_pretty_printer(_register_globally, pretty_printer_abseil)
 
     pretty_printer_boost = RegexpCollectionPrettyPrinter("gdbmongo-boost")
     pretty_printer_boost.enabled = boost
     boost_printers.add_printers(pretty_printer_boost)
-    gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_boost)
+    gdb.printing.register_pretty_printer(_register_globally, pretty_printer_boost)
 
     pretty_printer_mongo_extras = RegexpCollectionPrettyPrinter("gdbmongo-mongo-extras")
     pretty_printer_mongo_extras.enabled = mongo_extras
@@ -134,7 +143,7 @@ def register_printers(*, essentials: bool = True, stdlib: bool = False, abseil: 
     string_data_printer.add_printers(pretty_printer_mongo_extras)
     timestamp_printer.add_printers(pretty_printer_mongo_extras)
     uuid_printer.add_printers(pretty_printer_mongo_extras)
-    gdb.printing.register_pretty_printer(gdb.current_objfile(), pretty_printer_mongo_extras)
+    gdb.printing.register_pretty_printer(_register_globally, pretty_printer_mongo_extras)
 
     def initialize_environment(executable: str, /) -> None:
         _import_libstdcxx_printers(executable, register_libstdcxx_printers=stdlib)
