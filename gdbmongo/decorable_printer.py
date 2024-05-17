@@ -35,7 +35,6 @@ import typing
 import gdb
 
 from gdbmongo import stdlib_printers, stdlib_xmethods
-from gdbmongo.gdbutil import gdb_lookup_value
 from gdbmongo.printer_protocol import PrettyPrinterProtocol
 
 
@@ -194,10 +193,30 @@ class DecorationBufferPrinter(DecorationMemoryPrinterBase):
     symbol_name_regexp = re.compile(r"^typeinfo for (.*) in ")
 
     def __init__(self, val: gdb.Value, /) -> None:
+        # The 'mongo::decorable_detail::getRegistry<D>()::reg' function static can have its typeinfo
+        # elided.
+        #
+        #   template <typename D>
+        #   Registry& getRegistry() {
+        #       static auto reg = [] {
+        #           auto r = new Registry{};
+        #           return r;
+        #       }();
+        #       return *reg;
+        #   }
+        #
+        #   (gdb) print 'mongo::decorable_detail::getRegistry<mongo::ServiceContext>()::reg'
+        #   'mongo::decorable_detail::getRegistry<mongo::ServiceContext>()::reg' has unknown type;
+        #   cast it to its declared type
+        #
+        # We therefore cast its address to be a mongo::decorable_detail::Registry** to resolve its
+        # type manually.
         decorated_type_name = val.type.template_argument(0).tag
-        registry = gdb_lookup_value(
-            f"mongo::decorable_detail::getRegistry<{decorated_type_name}>()::reg")
-        assert registry is not None
+        registry_pp = gdb.parse_and_eval(
+            f"&'mongo::decorable_detail::getRegistry<{decorated_type_name}>()::reg'")
+
+        registry_type = gdb.lookup_type("mongo::decorable_detail::Registry")
+        registry = registry_pp.cast(registry_type.pointer().pointer()).dereference().dereference()
         self.registry = registry
         self.registry_entries = registry["_entries"]
 

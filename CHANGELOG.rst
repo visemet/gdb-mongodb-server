@@ -5,6 +5,8 @@ Changelog
 -------------------
 
 * Fix detecting libstdc++ version for Clang sanitizer builds.
+* Fix listing decorations of MongoDB 8.0. This includes accessing LockManager on global
+  ServiceContext.
 
 0.15.0 (2024-04-29)
 -------------------
