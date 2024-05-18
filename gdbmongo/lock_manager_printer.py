@@ -437,6 +437,8 @@ class LockRequestPrinter(SupportsChildren):
                 continue
 
             locker = data_member.dereference()
+            locker_debug_info = locker["_debugInfo"]
+
             # We augment the field name displayed for the mongo::LockRequest::locker member to
             # include its type. GDB would otherwise only display the mongo::Locker* address.
             yield (f"locker = ({locker.dynamic_type.pointer()}) {hex(int(locker.address))}",
@@ -462,7 +464,8 @@ class LockRequestPrinter(SupportsChildren):
                     thread_name = f', "{thread.name}"' if thread.name else ""
                     thread_id_str = f"{hex(thread_id)} (GDB Id: thread {thread.num}{thread_name})"
                 elif thread_id == 0:
-                    thread_id_str = "No active thread (likely an idle transaction)"
+                    thread_id_str = self._make_inactive_thread_hint(
+                        StdStringPrinter(locker_debug_info).string())
                 else:
                     # Only if the libthread_db library is not available would we expect to not find
                     # the thread's ID.
@@ -474,7 +477,7 @@ class LockRequestPrinter(SupportsChildren):
                 # gdb.Value(thread_id_str) to have the string text displayed verbatim.
                 yield ("locker._threadId", thread_id_str)
 
-            yield ("locker._debugInfo", locker["_debugInfo"])
+            yield ("locker._debugInfo", locker_debug_info)
 
             self._populate_cached_operation_contexts()
             assert self._cached_operation_contexts is not None
@@ -487,6 +490,17 @@ class LockRequestPrinter(SupportsChildren):
                 # intentionally chosen as invalid C++ and GDB syntax to avoid any naming collisions.
                 yield (f"locker.$_opCtx = ({operation_context.type}) {hex(int(operation_context))}",
                        operation_context)
+
+    def _make_inactive_thread_hint(self, locker_debug_info_str: str) -> str:
+        if locker_debug_info_str.startswith("lsid: "):
+            # https://github.com/mongodb/mongo/blob/r8.0.0-rc4/src/mongo/db/transaction/transaction_participant.cpp#L1360-L1364
+            return "No active thread (likely an idle transaction)"
+
+        if " operationType: " in locker_debug_info_str:
+            # https://github.com/mongodb/mongo/blob/r8.0.0-rc4/src/mongo/db/s/sharding_ddl_coordinator.cpp#L336
+            return "No active thread (likely a ShardingDDLCoordinator)"
+
+        return "No active thread (Locker::unsetThreadId() was called)"
 
     @classmethod
     def _populate_cached_threads(cls) -> None:
