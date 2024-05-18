@@ -88,6 +88,23 @@ class DecorationMemoryPrinterBase(PrettyPrinterProtocol, collections.abc.Sized):
         # non-pointer portion of the type so resolution for a type defined within an anonymous
         # namespace works correctly.
         escaped = cls.type_name_regexp.sub(r"'\1'\2*", type_name)
+        try:
+            return gdb.parse_and_eval(f"({escaped}) {decoration_address}").dereference()
+        except gdb.error as err:
+            if not err.args[0].startswith("No symbol "):
+                raise
+
+        # The MongoDB C++ driver prior to version 3.10.0 uses `inline namespace v_noabi { ... }` for
+        # mongocxx::instance and other types. This can inhibit GDB from resolving type names when
+        # the inline namespace appears within a template argument.
+        escaped = escaped.replace("bsoncxx::v_noabi::", "bsoncxx::")
+        escaped = escaped.replace("mongocxx::v_noabi::", "mongocxx::")
+
+        # libstdc++ uses `inline namespace __cxx11 { ... }` for its std::string definition and other
+        # types. This can inhibit GDB from resolving type names when the inline namespace appears
+        # within a template argument.
+        escaped = escaped.replace("std::__cxx11::", "std::")
+
         return gdb.parse_and_eval(f"({escaped}) {decoration_address}").dereference()
 
 
