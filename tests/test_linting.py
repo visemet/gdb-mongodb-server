@@ -22,10 +22,8 @@ import unittest.mock
 import mypy.api
 import pydocstyle.cli
 import pylint.lint
-import pytest
 
 
-@pytest.mark.filterwarnings(r"ignore:In astroid 3.0.0 NodeNG.statement\(\).*:DeprecationWarning")
 def test_linting() -> None:
     """Check code and tests for Python linting errors."""
     runner = pylint.lint.Run(
