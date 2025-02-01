@@ -122,7 +122,7 @@ class ToolchainVersionDetector:
             # older binaries.
             return cls.libstdcxx_python_home_v3
 
-        if gcc_version.endswith((" 11.2.0", " 11.3.0")):
+        if gcc_version.endswith((" 11.3.0", " 11.2.0")):
             # The v4 toolchain was upgraded from GCC 11.2.0 to GCC 11.3.0 in BUILD-14919 prior to
             # the official v4 toolchain rollout. The gcc-11.3.0/ directory is used for binaries
             # compiled with any of those compiler versions because we expect the machine to be
