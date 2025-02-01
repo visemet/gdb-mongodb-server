@@ -105,6 +105,29 @@ class DecorationMemoryPrinterBase(PrettyPrinterProtocol, collections.abc.Sized):
         # within a template argument.
         escaped = escaped.replace("std::__cxx11::", "std::")
 
+        # Functions with C linkage that appear in template parameters may result in mangled names
+        # which refer to the address of that function. This can be observed from 'XadL' appearing in
+        # the mangled name prior to the function's '_Z' name. The "address of" operator appearing in
+        # the type name can inhibit GDB from resolving it. This has been known to impact decoration
+        # types like
+        #
+        #   ServiceContext::declareDecoration<
+        #       libmongocrypt_unique_ptr<mongocrypt_t, mongocrypt_destroy>>()
+        #
+        # needing to be resolved as
+        #
+        #   std::unique_ptr<
+        #       _mongocrypt_t,
+        #       mongo::libmongocrypt_support_detail::
+        #           LibMongoCryptDeleter<_mongocrypt_t, mongocrypt_destroy>>
+        # and not
+        #
+        #   std::unique_ptr<
+        #       _mongocrypt_t,
+        #       mongo::libmongocrypt_support_detail::
+        #           LibMongoCryptDeleter<_mongocrypt_t, &mongocrypt_destroy>>
+        escaped = escaped.replace("&mongocrypt_destroy", "mongocrypt_destroy")
+
         return gdb.parse_and_eval(f"({escaped}) {decoration_address}").dereference()
 
 

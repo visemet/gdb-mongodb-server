@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.15.2 (2025-02-02)
+-------------------
+
+* Fix listing decorations of upcoming MongoDB 8.1. This includes accessing LockManager on global
+  ServiceContext.
+
 0.15.1 (2024-05-19)
 -------------------
 
