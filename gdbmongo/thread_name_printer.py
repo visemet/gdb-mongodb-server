@@ -83,7 +83,7 @@ def get_thread_name() -> str:
             raise ValueError(
                 "Failed to locate ThreadNameInfo decoration in ThreadContext") from None
     else:
-        # The 'mongo::(anonymous namespace)::ThreadNameInfo::forThisThread():Tls' struct has a
+        # The 'mongo::(anonymous namespace)::ThreadNameInfo::forThisThread()::Tls' struct has a
         # trivial definition and its typeinfo can be elided.
         #
         #   struct Tls {
