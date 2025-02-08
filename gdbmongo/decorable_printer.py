@@ -34,8 +34,8 @@ import typing
 
 import gdb
 
-from gdbmongo import stdlib_printers, stdlib_xmethods
-from gdbmongo.libstdcxxutil import vector_size
+from gdbmongo import stdlib_printers
+from gdbmongo.libstdcxxutil import unique_ptr_get, vector_size
 from gdbmongo.printer_protocol import PrettyPrinterProtocol
 
 
@@ -158,15 +158,7 @@ class DecorationContainerPrinter(DecorationMemoryPrinterBase):
         return length
 
     def _iterate_raw_entries(self) -> typing.Iterator[typing.Tuple[gdb.Type, gdb.Value]]:
-        xmethod_worker = stdlib_xmethods.UniquePtrMethodsMatcher().match(
-            self.decorations_storage.type, "get")
-
-        # UniquePtrGetWorker.__call__(self, obj) is implemented by first calling obj.dereference()
-        # on the supplied argument. This behavior for UniquePtrGetWorker was introduced by
-        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=77990 and is therefore present in all
-        # versions of the libstdc++ pretty printers for the MongoDB toolchain. We pass in
-        # `obj.address` to UniquePtrGetWorker to cancel out the obj.dereference() call.
-        decorations_storage = xmethod_worker(self.decorations_storage.address)
+        decorations_storage = unique_ptr_get(self.decorations_storage)
         iterator = stdlib_printers.StdVectorPrinter("std::vector", self.decorations_info).children()
         for (index, (_, decoration_info)) in enumerate(iterator):
             storage_offset = int(decoration_info["descriptor"]["_index"])

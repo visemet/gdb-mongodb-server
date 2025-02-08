@@ -26,6 +26,18 @@ def shared_ptr_get(obj: gdb.Value, /) -> gdb.Value:
     return xmethod_worker(obj)
 
 
+def unique_ptr_get(obj: gdb.Value, /) -> gdb.Value:
+    """Return the stored T* pointer underlying a std::unique_ptr<T>."""
+    xmethod_worker = stdlib_xmethods.UniquePtrMethodsMatcher().match(obj.type, "get")
+
+    # UniquePtrGetWorker.__call__(self, obj) is implemented by first calling obj.dereference() on
+    # the supplied argument. This behavior for UniquePtrGetWorker was introduced by
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=77990 and is therefore present in all versions of
+    # the libstdc++ pretty printers for the MongoDB toolchain. We pass in `obj.address` to
+    # UniquePtrGetWorker to cancel out the obj.dereference() call.
+    return xmethod_worker(obj.address)
+
+
 def vector_size(obj: gdb.Value, /) -> gdb.Value:
     """Return the number of elements in a std::vector<T>."""
     xmethod_worker = stdlib_xmethods.VectorMethodsMatcher().match(obj.type, "size")

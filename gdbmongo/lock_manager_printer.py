@@ -35,7 +35,7 @@ from gdbmongo.abseil_printers import (AbslFlatHashMapPrinter, AbslNodeHashMapPri
                                       AbslFlatHashSetPrinter, AbslNodeHashSetPrinter)
 from gdbmongo.decorable_printer import DecorationIterator
 from gdbmongo.gdbutil import gdb_is_libthread_db_loaded, gdb_lookup_value
-from gdbmongo.libstdcxxutil import shared_ptr_get
+from gdbmongo.libstdcxxutil import shared_ptr_get, unique_ptr_get
 from gdbmongo.printer_protocol import (PrettyPrinterProtocol, SupportsChildren, SupportsDisplayHint,
                                        SupportsToString)
 from gdbmongo.static_immortal_printer import StaticImmortalPrinter
@@ -543,14 +543,7 @@ class LockRequestPrinter(SupportsChildren):
             if (operation_context := client["_opCtx"]) != 0:
                 locker = operation_context["_locker"]
 
-                # UniquePtrGetWorker.__call__(self, obj) is implemented by first calling
-                # obj.dereference() on the supplied argument. This behavior for UniquePtrGetWorker
-                # was introduced by https://gcc.gnu.org/bugzilla/show_bug.cgi?id=77990 and is
-                # therefore present in all versions of the libstdc++ pretty printers for the MongoDB
-                # toolchain. We pass in `obj.address` to UniquePtrGetWorker to cancel out the
-                # obj.dereference() call.
-                xmethod_worker = stdlib_xmethods.UniquePtrMethodsMatcher().match(locker.type, "get")
-                if (locker_address := xmethod_worker(locker.address)) != 0:
+                if (locker_address := unique_ptr_get(locker)) != 0:
                     cached_operation_contexts[int(locker_address)] = operation_context
 
         cls._cached_operation_contexts = cached_operation_contexts
