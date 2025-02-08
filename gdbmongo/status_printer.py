@@ -19,7 +19,7 @@ import typing
 
 import gdb
 
-from gdbmongo import stdlib_xmethods
+from gdbmongo.libstdcxxutil import shared_ptr_get
 from gdbmongo.printer_protocol import SupportsChildren, SupportsToString
 
 
@@ -64,9 +64,7 @@ class ErrorInfoPrinter(SupportsChildren):
         yield ("code", self.code)
         yield ("reason", self.reason)
 
-        xmethod_worker = stdlib_xmethods.SharedPtrMethodsMatcher().match(self.extra.type, "get")
-
-        if (extra_info_ptr := xmethod_worker(self.extra)) != 0:
+        if (extra_info_ptr := shared_ptr_get(self.extra)) != 0:
             extra_info = extra_info_ptr.dereference()
             # The ErrorExtraInfo object must be cast to the derived type for GDB to actually display
             # its members from the derived type.

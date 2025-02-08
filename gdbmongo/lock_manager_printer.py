@@ -35,6 +35,7 @@ from gdbmongo.abseil_printers import (AbslFlatHashMapPrinter, AbslNodeHashMapPri
                                       AbslFlatHashSetPrinter, AbslNodeHashSetPrinter)
 from gdbmongo.decorable_printer import DecorationIterator
 from gdbmongo.gdbutil import gdb_is_libthread_db_loaded, gdb_lookup_value
+from gdbmongo.libstdcxxutil import shared_ptr_get
 from gdbmongo.printer_protocol import (PrettyPrinterProtocol, SupportsChildren, SupportsDisplayHint,
                                        SupportsToString)
 from gdbmongo.static_immortal_printer import StaticImmortalPrinter
@@ -121,8 +122,7 @@ class _CollectionCatalogPrinter(ServiceContextDecorationMixin, ResourceCatalogGe
                 "mongo::(anonymous namespace)::LatestCollectionCatalog")
 
         def __call__(self, decoration: gdb.Value, /) -> gdb.Value:
-            return stdlib_printers.SharedPointerPrinter(
-                "std::shared_ptr", decoration["catalog"]).pointer.dereference()
+            return shared_ptr_get(decoration["catalog"]).dereference()
 
     # pylint: disable-next=too-few-public-methods
     class _CollectionCatalogDecoration(CollectionCatalogGetter):
@@ -261,7 +261,7 @@ class _DatabaseShardingStateMapPrinter(ServiceContextDecorationMixin):
     def lookup_database_name(self, res_id: gdb.Value, /) -> typing.Optional[str]:
         """Return the database name of the resource."""
         for (_, dss) in AbslFlatHashMapPrinter(self.databases).items():
-            dss = stdlib_printers.SharedPointerPrinter("std::shared_ptr", dss).pointer.dereference()
+            dss = shared_ptr_get(dss).dereference()
             if dss["_stateChangeMutex"]["_rid"] == res_id:
                 return StdStringPrinter(dss["_dbName"]).string()
 

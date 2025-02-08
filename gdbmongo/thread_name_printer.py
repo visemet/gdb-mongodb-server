@@ -19,8 +19,8 @@ import typing
 
 import gdb
 
-from gdbmongo import stdlib_printers
 from gdbmongo.decorable_printer import DecorationIterator
+from gdbmongo.libstdcxxutil import shared_ptr_get
 from gdbmongo.printer_protocol import SupportsDisplayHint
 from gdbmongo.string_data_printer import (StdStringPrinter, StringDataPrinter,
                                           ValueAsPythonStringMixin)
@@ -141,9 +141,7 @@ class _ThreadNameInfoPrinter(SupportsDisplayHint, ValueAsPythonStringMixin):
         return "string"
 
     def to_string(self) -> str:
-        thread_name = stdlib_printers.SharedPointerPrinter(
-            "std::shared_ptr", self.val["_h"]["_ptr"]).pointer.dereference()
-
+        thread_name = shared_ptr_get(self.val["_h"]["_ptr"]).dereference()
         return StdStringPrinter(thread_name).string()
 
 

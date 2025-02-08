@@ -50,10 +50,6 @@ class SharedPointerPrinter(__PrettyPrinterProtocol):
     def __init__(self, typename: typing.Literal["std::shared_ptr"], val: gdb.Value, /):
         ...
 
-    @property
-    def pointer(self) -> gdb.Value:
-        ...
-
 
 class UniquePointerPrinter(__PrettyPrinterProtocol):
 

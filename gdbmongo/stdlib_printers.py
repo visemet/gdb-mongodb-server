@@ -31,13 +31,14 @@ the following Python snippet:
 
         def __init__(self, val: gdb.Value, /) -> None:
             self.val = val
-            self.cursor = val["_cursor"]
+            self.pipeline = val["_pipeline"]
 
         def to_string(self) -> str:
             # The class is aliased here as a local variable for some brevity.
-            SharedPointerPrinter = gdbmongo.stdlib_printers.SharedPointerPrinter
-            cursor = SharedPointerPrinter("std::shared_ptr", self.cursor).pointer.dereference()
-            ...
+            StdVectorPrinter = gdbmongo.stdlib_printers.StdVectorPrinter
+            iterator = StdVectorPrinter("std::vector", self.pipeline).children()
+            for (index, (_, stage)) in enumerate(iterator):
+                ...
 """
 
 import importlib
