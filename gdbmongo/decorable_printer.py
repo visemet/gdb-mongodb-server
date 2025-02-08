@@ -35,6 +35,7 @@ import typing
 import gdb
 
 from gdbmongo import stdlib_printers, stdlib_xmethods
+from gdbmongo.libstdcxxutil import vector_size
 from gdbmongo.printer_protocol import PrettyPrinterProtocol
 
 
@@ -153,8 +154,7 @@ class DecorationContainerPrinter(DecorationMemoryPrinterBase):
             fr"^void {registry_type.name}::constructAt<\s*(.*)\s*>\(void\*\)$")
 
     def __len__(self) -> int:
-        iterator = stdlib_printers.StdVectorPrinter("std::vector", self.decorations_info).children()
-        length = int(iterator.finish - iterator.item)
+        length = int(vector_size(self.decorations_info))
         return length
 
     def _iterate_raw_entries(self) -> typing.Iterator[typing.Tuple[gdb.Type, gdb.Value]]:
@@ -287,8 +287,7 @@ class DecorationBufferPrinter(DecorationMemoryPrinterBase):
             self._offset_field_name = "_offset"
 
     def __len__(self) -> int:
-        iterator = stdlib_printers.StdVectorPrinter("std::vector", self.registry_entries).children()
-        length = int(iterator.finish - iterator.item)
+        length = int(vector_size(self.registry_entries))
         return length
 
     def _iterate_raw_entries(self) -> typing.Iterator[typing.Tuple[gdb.Type, gdb.Value]]:

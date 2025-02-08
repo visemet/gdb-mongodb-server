@@ -24,3 +24,9 @@ def shared_ptr_get(obj: gdb.Value, /) -> gdb.Value:
     """Return the stored T* pointer underlying a std::shared_ptr<T>."""
     xmethod_worker = stdlib_xmethods.SharedPtrMethodsMatcher().match(obj.type, "get")
     return xmethod_worker(obj)
+
+
+def vector_size(obj: gdb.Value, /) -> gdb.Value:
+    """Return the number of elements in a std::vector<T>."""
+    xmethod_worker = stdlib_xmethods.VectorMethodsMatcher().match(obj.type, "size")
+    return xmethod_worker(obj)
