@@ -44,6 +44,7 @@ class ToolchainVersionDetector:
 
     libstdcxx_python_home_v3 = pathlib.Path("/opt/mongodbtoolchain/v3/share/gcc-8.5.0/python")
     libstdcxx_python_home_v4 = pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")
+    libstdcxx_python_home_v5 = pathlib.Path("/opt/mongodbtoolchain/v5/share/gcc-14.2.0/python")
 
     def __init__(self, executable: StrOrBytesPath, /):
         """Initialize the ToolchainVersionDetector with the pathname of an executable."""
@@ -130,6 +131,9 @@ class ToolchainVersionDetector:
             # older binaries.
             return cls.libstdcxx_python_home_v4
 
+        if gcc_version.endswith(" 14.2.0"):
+            return cls.libstdcxx_python_home_v5
+
         warnings.warn(
             "Unable to determine the location of the libstdc++ GDB pretty printers. Please file a"
             " GitHub issue against https://github.com/visemet/gdb-mongodb-server and mention your "
@@ -147,6 +151,9 @@ class ToolchainVersionDetector:
 
         if clang_version.endswith(" 12.0.1"):
             return cls.libstdcxx_python_home_v4
+
+        if clang_version.endswith((" 19.1.7", " 19.1.0")):
+            return cls.libstdcxx_python_home_v5
 
         warnings.warn(
             "Unable to determine the location of the libstdc++ GDB pretty printers. Please file a"

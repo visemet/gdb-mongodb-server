@@ -118,6 +118,24 @@ def test_parse_clang_version(raw_elf_section: bytes, expected: typing.Optional[s
             ToolchainInfo("MongoDB clang version 12.0.1",
                           pathlib.Path("/opt/mongodbtoolchain/v4/share/gcc-11.3.0/python")),
             id="v4-clang-compiler-rt"),
+        pytest.param(
+            # pylint: disable-next=line-too-long
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/linux-x86-dynamic-debug-compile-toolchain-v5/mongodb_mongo_master_d6c9f84e40025a3709bb336ae3628009d2bda8dd/binaries/mongo-69121.tgz",
+            ToolchainInfo("GCC: (GNU) 14.2.0",
+                          pathlib.Path("/opt/mongodbtoolchain/v5/share/gcc-14.2.0/python")),
+            id="v5-gcc"),
+        pytest.param(
+            # pylint: disable-next=line-too-long
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/enterprise-rhel-8-arm64-grpc-toolchain-v5/mongodb_mongo_master_d6c9f84e40025a3709bb336ae3628009d2bda8dd/binaries/mongo-69121.tgz",
+            ToolchainInfo("GCC: (GNU) 14.2.0",
+                          pathlib.Path("/opt/mongodbtoolchain/v5/share/gcc-14.2.0/python")),
+            id="v5-gcc-arm64"),
+        pytest.param(
+            # pylint: disable-next=line-too-long
+            "https://mciuploads.s3.amazonaws.com/mongodb-mongo-master/linux-debug-aubsan-compile-toolchain-v5/mongodb_mongo_master_d6c9f84e40025a3709bb336ae3628009d2bda8dd/binaries/mongo-69121.tgz",
+            ToolchainInfo("MongoDB clang version 19.1.0",
+                          pathlib.Path("/opt/mongodbtoolchain/v5/share/gcc-14.2.0/python")),
+            id="v5-clang"),
     ))
 def test_detected_toolchain_from_real_executable(url: str, expected: ToolchainInfo) -> None:
     """Check the toolchain info for a real mongod executable."""

@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.16.0 (2025-02-13)
+-------------------
+
+* Support binaries built with MongoDB v5 toolchain.
+
 0.15.2 (2025-02-02)
 -------------------
 
